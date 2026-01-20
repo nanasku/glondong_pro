@@ -1216,6 +1216,150 @@ class _TransaksiPenjualanState extends State<TransaksiPenjualan>
     }
   }
 
+  // Di dalam class _TransaksiPenjualanState, modifikasi fungsi _loadDataDariDatabase:
+
+// Fungsi untuk memuat data kayu dari SQLite berdasarkan pembeli yang dipilih
+Future<void> _loadHargaJualByPembeli(String? pembeliId) async {
+  try {
+    if (pembeliId == null || pembeliId.isEmpty) {
+      setState(() {
+        daftarKayu = [];
+      });
+      return;
+    }
+
+    final db = await _dbService.database;
+    
+    // Query untuk mendapatkan harga jual berdasarkan pembeli_id
+    final kayuData = await db.rawQuery('''
+      SELECT 
+        hj.id,
+        hj.nama_kayu,
+        hj.harga_rijek_1,
+        hj.harga_rijek_2,
+        hj.harga_standar,
+        hj.harga_super_a,
+        hj.harga_super_b,
+        hj.harga_super_c
+      FROM harga_jual hj
+      WHERE hj.pembeli_id = ?
+      ORDER BY hj.nama_kayu ASC
+    ''', [int.parse(pembeliId)]);
+
+    setState(() {
+      daftarKayu = kayuData
+          .map(
+            (item) => {
+              'id': item['id'].toString(),
+              'nama_kayu': item['nama_kayu'] ?? '',
+              'harga_rijek_1': item['harga_rijek_1'] ?? 0,
+              'harga_rijek_2': item['harga_rijek_2'] ?? 0,
+              'harga_standar': item['harga_standar'] ?? 0,
+              'harga_super_a': item['harga_super_a'] ?? 0,
+              'harga_super_b': item['harga_super_b'] ?? 0,
+              'harga_super_c': item['harga_super_c'] ?? 0,
+            },
+          )
+          .toList();
+      
+      // Reset selected kayu jika tidak ada dalam daftar baru
+      if (selectedKayuId != null) {
+        bool kayuExists = daftarKayu.any((k) => k['id'] == selectedKayuId);
+        if (!kayuExists) {
+          selectedKayuId = null;
+          selectedKayuNama = null;
+          kayu = '';
+          harga = {
+            'Rijek 1': 0.0,
+            'Rijek 2': 0.0,
+            'Standar': 0.0,
+            'Super A': 0.0,
+            'Super B': 0.0,
+            'Super C': 0.0,
+          };
+        }
+      }
+    });
+  } catch (error) {
+    print('Error loading harga jual by pembeli: $error');
+  }
+}
+
+// Modifikasi onChanged di dropdown pembeli:
+onChanged: (String? value) {
+  setState(() {
+    selectedPembeliId = value;
+    final selected = daftarPembeli.firstWhere(
+      (p) => p['id']?.toString() == value,
+      orElse: () => <String, dynamic>{},
+    );
+    if (selected.isNotEmpty) {
+      selectedPembeliNama = selected['nama']?.toString();
+      selectedPembeliAlamat = selected['alamat']?.toString();
+      pembeli = selectedPembeliNama ?? '';
+      alamat = selectedPembeliAlamat ?? '';
+      
+      // Load harga jual berdasarkan pembeli yang dipilih
+      _loadHargaJualByPembeli(value);
+    } else {
+      // Reset jika pembeli tidak ditemukan
+      selectedPembeliNama = null;
+      selectedPembeliAlamat = null;
+      pembeli = '';
+      alamat = '';
+      daftarKayu = [];
+      selectedKayuId = null;
+      selectedKayuNama = null;
+      kayu = '';
+      harga = {
+        'Rijek 1': 0.0,
+        'Rijek 2': 0.0,
+        'Standar': 0.0,
+        'Super A': 0.0,
+        'Super B': 0.0,
+        'Super C': 0.0,
+      };
+    }
+  });
+},
+
+// Modifikasi onChanged di dropdown kayu tetap sama:
+onChanged: (String? value) {
+  setState(() {
+    selectedKayuId = value;
+    final selected = daftarKayu.firstWhere(
+      (k) => k['id']?.toString() == value,
+      orElse: () => <String, dynamic>{},
+    );
+
+    if (selected.isNotEmpty) {
+      selectedKayuNama = selected['nama_kayu']?.toString();
+      kayu = selectedKayuNama ?? '';
+
+      // Set harga dari data SQLite
+      harga = {
+        'Rijek 1': selected['harga_rijek_1'] ?? 0,
+        'Rijek 2': selected['harga_rijek_2'] ?? 0,
+        'Standar': selected['harga_standar'] ?? 0,
+        'Super A': selected['harga_super_a'] ?? 0,
+        'Super B': selected['harga_super_b'] ?? 0,
+        'Super C': selected['harga_super_c'] ?? 0,
+      };
+    } else {
+      selectedKayuNama = null;
+      kayu = '';
+      harga = {
+        'Rijek 1': 0.0,
+        'Rijek 2': 0.0,
+        'Standar': 0.0,
+        'Super A': 0.0,
+        'Super B': 0.0,
+        'Super C': 0.0,
+      };
+    }
+  });
+},
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

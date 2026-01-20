@@ -341,15 +341,15 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
   String _getHargaTypeLabel() {
     switch (selectedHargaType) {
       case HargaType.umum:
-        return 'Umum';
+        return 'Um';
       case HargaType.level1:
-        return 'Level 1';
+        return 'Lv 1';
       case HargaType.level2:
-        return 'Level 2';
+        return 'Lv 2';
       case HargaType.level3:
-        return 'Level 3';
+        return 'Lv 3';
       default:
-        return 'Umum';
+        return 'Um';
     }
   }
 
@@ -1023,16 +1023,75 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
         await printer.printCustom('------------------------', 1, 1);
 
-        // DETAIL ITEM
+        // DETAIL ITEM - FIXED: Type conversion
         for (var item in data) {
           String kriteria = getShortLabel(item['kriteria']);
-          int diameter = item['diameter'].toInt();
-          int panjang = item['panjang'].toInt();
-          int jumlah = item['jumlah'];
-          int volume = item['volume'].toInt();
-          int totalVolume = (volume * jumlah).toInt();
-          int harga = item['harga'];
-          int jumlahHarga = item['jumlahHarga'];
+
+          // Convert diameter to int safely
+          int diameter = 0;
+          if (item['diameter'] is double) {
+            diameter = (item['diameter'] as double).round();
+          } else if (item['diameter'] is int) {
+            diameter = item['diameter'] as int;
+          } else {
+            diameter = int.tryParse(item['diameter'].toString()) ?? 0;
+          }
+
+          // Convert panjang to int safely
+          int panjang = 0;
+          if (item['panjang'] is double) {
+            panjang = (item['panjang'] as double).round();
+          } else if (item['panjang'] is int) {
+            panjang = item['panjang'] as int;
+          } else {
+            panjang = int.tryParse(item['panjang'].toString()) ?? 0;
+          }
+
+          // Convert jumlah to int safely
+          int jumlah = 0;
+          if (item['jumlah'] is double) {
+            jumlah = (item['jumlah'] as double).round();
+          } else if (item['jumlah'] is int) {
+            jumlah = item['jumlah'] as int;
+          } else {
+            jumlah = int.tryParse(item['jumlah'].toString()) ?? 0;
+          }
+
+          // Convert volume to int safely
+          double volumeDouble = 0.0;
+          if (item['volume'] is double) {
+            volumeDouble = item['volume'] as double;
+          } else if (item['volume'] is int) {
+            volumeDouble = (item['volume'] as int).toDouble();
+          } else {
+            volumeDouble = double.tryParse(item['volume'].toString()) ?? 0.0;
+          }
+          int volume = volumeDouble.round();
+
+          int totalVolume = (volume * jumlah);
+
+          // Convert harga to int safely
+          double hargaDouble = 0.0;
+          if (item['harga'] is double) {
+            hargaDouble = item['harga'] as double;
+          } else if (item['harga'] is int) {
+            hargaDouble = (item['harga'] as int).toDouble();
+          } else {
+            hargaDouble = double.tryParse(item['harga'].toString()) ?? 0.0;
+          }
+          int harga = hargaDouble.round();
+
+          // Convert jumlahHarga to int safely
+          double jumlahHargaDouble = 0.0;
+          if (item['jumlahHarga'] is double) {
+            jumlahHargaDouble = item['jumlahHarga'] as double;
+          } else if (item['jumlahHarga'] is int) {
+            jumlahHargaDouble = (item['jumlahHarga'] as int).toDouble();
+          } else {
+            jumlahHargaDouble =
+                double.tryParse(item['jumlahHarga'].toString()) ?? 0.0;
+          }
+          int jumlahHarga = jumlahHargaDouble.round();
 
           String kiriHeader = '$kriteria D$diameter P$panjang';
           String kananHeader = '$jumlah x $volume cm3';
@@ -1046,24 +1105,49 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
         await printer.printCustom('------------------------', 1, 1);
 
-        // TOTAL VOLUME & HARGA
-        double totalVol = data.fold(
-          0,
-          (sum, item) => sum + (item['volume'] * item['jumlah']),
-        );
+        // TOTAL VOLUME & HARGA - FIXED: Type conversion
+        double totalVol = data.fold(0.0, (sum, item) {
+          double volume = 0.0;
+          if (item['volume'] is double) {
+            volume = item['volume'] as double;
+          } else if (item['volume'] is int) {
+            volume = (item['volume'] as int).toDouble();
+          } else {
+            volume = double.tryParse(item['volume'].toString()) ?? 0.0;
+          }
+
+          double jumlah = 0.0;
+          if (item['jumlah'] is double) {
+            jumlah = item['jumlah'] as double;
+          } else if (item['jumlah'] is int) {
+            jumlah = (item['jumlah'] as int).toDouble();
+          } else {
+            jumlah = double.tryParse(item['jumlah'].toString()) ?? 0.0;
+          }
+
+          return sum + (volume * jumlah);
+        });
         await printer.printLeftRight(
           'Total Volume',
-          '${totalVol.toStringAsFixed(0)} cm3',
+          '${totalVol.round()} cm3',
           1,
         );
 
-        double totalHrg = data.fold(
-          0,
-          (sum, item) => sum + item['jumlahHarga'],
-        );
+        double totalHrg = data.fold(0.0, (sum, item) {
+          double jumlahHarga = 0.0;
+          if (item['jumlahHarga'] is double) {
+            jumlahHarga = item['jumlahHarga'] as double;
+          } else if (item['jumlahHarga'] is int) {
+            jumlahHarga = (item['jumlahHarga'] as int).toDouble();
+          } else {
+            jumlahHarga =
+                double.tryParse(item['jumlahHarga'].toString()) ?? 0.0;
+          }
+          return sum + jumlahHarga;
+        });
         await printer.printLeftRight(
           'Total Harga',
-          formatter.format(totalHrg),
+          formatter.format(totalHrg.round()),
           1,
         );
 
@@ -1074,7 +1158,18 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
           for (var op in operasionals) {
             String jenis = op['jenis'].toString();
-            int biaya = int.tryParse(op['biaya'].toString()) ?? 0;
+
+            // Convert biaya to int safely
+            double biayaDouble = 0.0;
+            if (op['biaya'] is double) {
+              biayaDouble = op['biaya'] as double;
+            } else if (op['biaya'] is int) {
+              biayaDouble = (op['biaya'] as int).toDouble();
+            } else {
+              biayaDouble = double.tryParse(op['biaya'].toString()) ?? 0.0;
+            }
+            int biaya = biayaDouble.round();
+
             String tipe = op['tipe'].toString();
             String symbol = tipe == 'tambah' ? '+' : '-';
 
@@ -1087,8 +1182,15 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
           double totalOperasional = 0.0;
           for (var op in operasionals) {
-            final biaya = (int.tryParse(op['biaya'].toString()) ?? 0)
-                .toDouble();
+            double biaya = 0.0;
+            if (op['biaya'] is double) {
+              biaya = op['biaya'] as double;
+            } else if (op['biaya'] is int) {
+              biaya = (op['biaya'] as int).toDouble();
+            } else {
+              biaya = double.tryParse(op['biaya'].toString()) ?? 0.0;
+            }
+
             if (op['tipe'] == 'tambah') {
               totalOperasional += biaya;
             } else {
@@ -1096,17 +1198,25 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
             }
           }
 
-          String totalOpStr = formatter.format(totalOperasional);
+          String totalOpStr = formatter.format(totalOperasional.round());
           totalOpStr = totalOpStr.trim();
           await printer.printLeftRight('Jml Operasional', totalOpStr, 1);
         }
 
         await printer.printCustom('========================', 1, 1);
 
-        // TOTAL AKHIR
+        // TOTAL AKHIR - FIXED: Type conversion
         double totalAkhir = totalHrg;
         for (var op in operasionals) {
-          final biaya = (op['biaya'] as num).toDouble();
+          double biaya = 0.0;
+          if (op['biaya'] is double) {
+            biaya = op['biaya'] as double;
+          } else if (op['biaya'] is int) {
+            biaya = (op['biaya'] as int).toDouble();
+          } else {
+            biaya = double.tryParse(op['biaya'].toString()) ?? 0.0;
+          }
+
           if (op['tipe'] == 'tambah') {
             totalAkhir += biaya;
           } else {
@@ -1114,7 +1224,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
           }
         }
 
-        String nilaiFormatted = formatter.format(totalAkhir);
+        String nilaiFormatted = formatter.format(totalAkhir.round());
         String barisTotal =
             'TOTAL AKHIR'.padRight(20) + nilaiFormatted.padLeft(12);
         await printer.printCustom(barisTotal, 1, 2);
@@ -1222,10 +1332,10 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildHargaTypeChip('Umum', HargaType.umum),
-            _buildHargaTypeChip('Level 1', HargaType.level1),
-            _buildHargaTypeChip('Level 2', HargaType.level2),
-            _buildHargaTypeChip('Level 3', HargaType.level3),
+            _buildHargaTypeChip('Um', HargaType.umum),
+            _buildHargaTypeChip('Lv 1', HargaType.level1),
+            _buildHargaTypeChip('Lv 2', HargaType.level2),
+            _buildHargaTypeChip('Lv 3', HargaType.level3),
           ],
         ),
         SizedBox(height: 12),
@@ -1386,10 +1496,6 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
               ],
             ),
             SizedBox(height: 10),
-
-            _buildHargaTypeSelector(),
-            SizedBox(height: 10),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -1610,14 +1716,14 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(getShortLabel(item['kriteria'])),
-                                        SizedBox(height: 2),
-                                        Text(
-                                          '(${item['hargaTypeLabel'] ?? 'Umum'})',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.blue[700],
-                                          ),
-                                        ),
+                                        // SizedBox(height: 2),
+                                        // Text(
+                                        //   '(${item['hargaTypeLabel'] ?? 'Umum'})',
+                                        //   style: TextStyle(
+                                        //     fontSize: 10,
+                                        //     color: Colors.blue[700],
+                                        //   ),
+                                        // ),
                                       ],
                                     ),
                                   ),
@@ -1871,6 +1977,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                     Text('No Faktur: $noFaktur'),
                     SizedBox(height: 10),
 
+                    // Pilihan Jenis Harga hanya ada di modal
                     _buildHargaTypeSelector(),
                     SizedBox(height: 10),
 

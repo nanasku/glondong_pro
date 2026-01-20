@@ -3,7 +3,7 @@ import 'package:path/path.dart';
 
 class DatabaseService {
   static Database? _database;
-  static const int _databaseVersion = 2; // Naikkan version dari 1 ke 2
+  static const int _databaseVersion = 4; // Naikkan version dari 3 ke 4
 
   // Getter database
   Future<Database> get database async {
@@ -18,7 +18,7 @@ class DatabaseService {
       path,
       version: _databaseVersion,
       onCreate: _createTables,
-      onUpgrade: _upgradeDatabase, // Tambahkan ini
+      onUpgrade: _upgradeDatabase,
     );
   }
 
@@ -27,6 +27,7 @@ class DatabaseService {
     int oldVersion,
     int newVersion,
   ) async {
+    // Upgrade dari version 1 ke 2
     if (oldVersion < 2) {
       // Tambahkan tabel biaya_lain untuk upgrade dari version 1 ke 2
       await db.execute('''
@@ -39,6 +40,310 @@ class DatabaseService {
           created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
       ''');
+    }
+
+    // Upgrade dari version 2 ke 3
+    if (oldVersion < 3) {
+      // Untuk upgrade ke version 3, tambahkan kolom level harga ke tabel harga_beli
+      try {
+        // Tambahkan kolom level untuk harga_rijek_1
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_rijek_1_level1 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_rijek_1_level2 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_rijek_1_level3 INTEGER DEFAULT 0
+        ''');
+
+        // Tambahkan kolom level untuk harga_rijek_2
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_rijek_2_level1 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_rijek_2_level2 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_rijek_2_level3 INTEGER DEFAULT 0
+        ''');
+
+        // Tambahkan kolom level untuk harga_standar
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_standar_level1 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_standar_level2 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_standar_level3 INTEGER DEFAULT 0
+        ''');
+
+        // Tambahkan kolom level untuk harga_super_a
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_super_a_level1 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_super_a_level2 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_super_a_level3 INTEGER DEFAULT 0
+        ''');
+
+        // Tambahkan kolom level untuk harga_super_b
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_super_b_level1 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_super_b_level2 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_super_b_level3 INTEGER DEFAULT 0
+        ''');
+
+        // Tambahkan kolom level untuk harga_super_c
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_super_c_level1 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_super_c_level2 INTEGER DEFAULT 0
+        ''');
+        await db.execute('''
+          ALTER TABLE harga_beli 
+          ADD COLUMN harga_super_c_level3 INTEGER DEFAULT 0
+        ''');
+
+        print(
+          'Successfully upgraded database to version 3 with level price columns',
+        );
+      } catch (e) {
+        print('Error upgrading database to version 3: $e');
+        // Jika ALTER TABLE gagal, coba drop dan recreate tabel
+        await _recreateHargaBeliTable(db);
+      }
+    }
+
+    // Upgrade dari version 3 ke 4
+    if (oldVersion < 4) {
+      try {
+        // Tambahkan kolom pembeli_id ke tabel harga_jual
+        await db.execute('''
+          ALTER TABLE harga_jual 
+          ADD COLUMN pembeli_id INTEGER DEFAULT 0
+        ''');
+
+        // Tambahkan constraint UNIQUE
+        await db.execute('''
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_harga_jual_unique 
+          ON harga_jual (nama_kayu, pembeli_id)
+        ''');
+
+        print(
+          'Successfully upgraded database to version 4 with pembeli_id column',
+        );
+      } catch (e) {
+        print('Error upgrading database to version 4: $e');
+        // Jika ALTER TABLE gagal, coba recreate tabel
+        await _recreateHargaJualTable(db);
+      }
+    }
+  }
+
+  // Helper method untuk recreate tabel harga_beli
+  static Future<void> _recreateHargaBeliTable(Database db) async {
+    try {
+      // Backup data existing
+      final List<Map<String, dynamic>> oldData = await db.query('harga_beli');
+
+      // Drop tabel lama
+      await db.execute('DROP TABLE IF EXISTS harga_beli_backup');
+      await db.execute('ALTER TABLE harga_beli RENAME TO harga_beli_backup');
+
+      // Create tabel baru dengan struktur lengkap
+      await db.execute('''
+        CREATE TABLE harga_beli (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nama_kayu TEXT NOT NULL,
+          harga_rijek_1 INTEGER DEFAULT 0,
+          harga_rijek_1_level1 INTEGER DEFAULT 0,
+          harga_rijek_1_level2 INTEGER DEFAULT 0,
+          harga_rijek_1_level3 INTEGER DEFAULT 0,
+          harga_rijek_2 INTEGER DEFAULT 0,
+          harga_rijek_2_level1 INTEGER DEFAULT 0,
+          harga_rijek_2_level2 INTEGER DEFAULT 0,
+          harga_rijek_2_level3 INTEGER DEFAULT 0,
+          harga_standar INTEGER DEFAULT 0,
+          harga_standar_level1 INTEGER DEFAULT 0,
+          harga_standar_level2 INTEGER DEFAULT 0,
+          harga_standar_level3 INTEGER DEFAULT 0,
+          harga_super_a INTEGER DEFAULT 0,
+          harga_super_a_level1 INTEGER DEFAULT 0,
+          harga_super_a_level2 INTEGER DEFAULT 0,
+          harga_super_a_level3 INTEGER DEFAULT 0,
+          harga_super_b INTEGER DEFAULT 0,
+          harga_super_b_level1 INTEGER DEFAULT 0,
+          harga_super_b_level2 INTEGER DEFAULT 0,
+          harga_super_b_level3 INTEGER DEFAULT 0,
+          harga_super_c INTEGER DEFAULT 0,
+          harga_super_c_level1 INTEGER DEFAULT 0,
+          harga_super_c_level2 INTEGER DEFAULT 0,
+          harga_super_c_level3 INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      ''');
+
+      // Insert kembali data lama (jika ada)
+      for (var item in oldData) {
+        await db.insert('harga_beli', {
+          'nama_kayu': item['nama_kayu'],
+          'harga_rijek_1': item['harga_rijek_1'] ?? 0,
+          'harga_rijek_1_level1': 0,
+          'harga_rijek_1_level2': 0,
+          'harga_rijek_1_level3': 0,
+          'harga_rijek_2': item['harga_rijek_2'] ?? 0,
+          'harga_rijek_2_level1': 0,
+          'harga_rijek_2_level2': 0,
+          'harga_rijek_2_level3': 0,
+          'harga_standar': item['harga_standar'] ?? 0,
+          'harga_standar_level1': 0,
+          'harga_standar_level2': 0,
+          'harga_standar_level3': 0,
+          'harga_super_a': item['harga_super_a'] ?? 0,
+          'harga_super_a_level1': 0,
+          'harga_super_a_level2': 0,
+          'harga_super_a_level3': 0,
+          'harga_super_b': item['harga_super_b'] ?? 0,
+          'harga_super_b_level1': 0,
+          'harga_super_b_level2': 0,
+          'harga_super_b_level3': 0,
+          'harga_super_c': item['harga_super_c'] ?? 0,
+          'harga_super_c_level1': 0,
+          'harga_super_c_level2': 0,
+          'harga_super_c_level3': 0,
+          'created_at': item['created_at'] ?? DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+
+      // Drop backup table
+      await db.execute('DROP TABLE IF EXISTS harga_beli_backup');
+
+      print('Successfully recreated harga_beli table with level price columns');
+    } catch (e) {
+      print('Error recreating harga_beli table: $e');
+    }
+  }
+
+  // Helper method untuk recreate tabel harga_jual dengan pembeli_id
+  static Future<void> _recreateHargaJualTable(Database db) async {
+    try {
+      // Backup data existing
+      final List<Map<String, dynamic>> oldData = await db.query('harga_jual');
+
+      // Drop tabel lama
+      await db.execute('DROP TABLE IF EXISTS harga_jual_backup');
+      await db.execute('ALTER TABLE harga_jual RENAME TO harga_jual_backup');
+
+      // Create tabel baru dengan struktur lengkap termasuk pembeli_id
+      await db.execute('''
+        CREATE TABLE harga_jual (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nama_kayu TEXT NOT NULL,
+          pembeli_id INTEGER DEFAULT 0,
+          
+          harga_rijek_1 INTEGER DEFAULT 0,
+          harga_rijek_1_level1 INTEGER DEFAULT 0,
+          harga_rijek_1_level2 INTEGER DEFAULT 0,
+          harga_rijek_1_level3 INTEGER DEFAULT 0,
+          
+          harga_rijek_2 INTEGER DEFAULT 0,
+          harga_rijek_2_level1 INTEGER DEFAULT 0,
+          harga_rijek_2_level2 INTEGER DEFAULT 0,
+          harga_rijek_2_level3 INTEGER DEFAULT 0,
+          
+          harga_standar INTEGER DEFAULT 0,
+          harga_standar_level1 INTEGER DEFAULT 0,
+          harga_standar_level2 INTEGER DEFAULT 0,
+          harga_standar_level3 INTEGER DEFAULT 0,
+          
+          harga_super_a INTEGER DEFAULT 0,
+          harga_super_a_level1 INTEGER DEFAULT 0,
+          harga_super_a_level2 INTEGER DEFAULT 0,
+          harga_super_a_level3 INTEGER DEFAULT 0,
+          
+          harga_super_b INTEGER DEFAULT 0,
+          harga_super_b_level1 INTEGER DEFAULT 0,
+          harga_super_b_level2 INTEGER DEFAULT 0,
+          harga_super_b_level3 INTEGER DEFAULT 0,
+          
+          harga_super_c INTEGER DEFAULT 0,
+          harga_super_c_level1 INTEGER DEFAULT 0,
+          harga_super_c_level2 INTEGER DEFAULT 0,
+          harga_super_c_level3 INTEGER DEFAULT 0,
+          
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      ''');
+
+      // Insert kembali data lama (jika ada)
+      for (var item in oldData) {
+        await db.insert('harga_jual', {
+          'nama_kayu': item['nama_kayu'],
+          'pembeli_id': 0, // Default untuk data lama
+          'harga_rijek_1': item['harga_rijek_1'] ?? 0,
+          'harga_rijek_1_level1': item['harga_rijek_1_level1'] ?? 0,
+          'harga_rijek_1_level2': item['harga_rijek_1_level2'] ?? 0,
+          'harga_rijek_1_level3': item['harga_rijek_1_level3'] ?? 0,
+          'harga_rijek_2': item['harga_rijek_2'] ?? 0,
+          'harga_rijek_2_level1': item['harga_rijek_2_level1'] ?? 0,
+          'harga_rijek_2_level2': item['harga_rijek_2_level2'] ?? 0,
+          'harga_rijek_2_level3': item['harga_rijek_2_level3'] ?? 0,
+          'harga_standar': item['harga_standar'] ?? 0,
+          'harga_standar_level1': item['harga_standar_level1'] ?? 0,
+          'harga_standar_level2': item['harga_standar_level2'] ?? 0,
+          'harga_standar_level3': item['harga_standar_level3'] ?? 0,
+          'harga_super_a': item['harga_super_a'] ?? 0,
+          'harga_super_a_level1': item['harga_super_a_level1'] ?? 0,
+          'harga_super_a_level2': item['harga_super_a_level2'] ?? 0,
+          'harga_super_a_level3': item['harga_super_a_level3'] ?? 0,
+          'harga_super_b': item['harga_super_b'] ?? 0,
+          'harga_super_b_level1': item['harga_super_b_level1'] ?? 0,
+          'harga_super_b_level2': item['harga_super_b_level2'] ?? 0,
+          'harga_super_b_level3': item['harga_super_b_level3'] ?? 0,
+          'harga_super_c': item['harga_super_c'] ?? 0,
+          'harga_super_c_level1': item['harga_super_c_level1'] ?? 0,
+          'harga_super_c_level2': item['harga_super_c_level2'] ?? 0,
+          'harga_super_c_level3': item['harga_super_c_level3'] ?? 0,
+          'created_at': item['created_at'] ?? DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+
+      // Drop backup table
+      await db.execute('DROP TABLE IF EXISTS harga_jual_backup');
+
+      print('Successfully recreated harga_jual table with pembeli_id column');
+    } catch (e) {
+      print('Error recreating harga_jual table: $e');
     }
   }
 
@@ -75,30 +380,84 @@ class DatabaseService {
       CREATE TABLE harga_beli (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nama_kayu TEXT NOT NULL,
+        
         harga_rijek_1 INTEGER DEFAULT 0,
+        harga_rijek_1_level1 INTEGER DEFAULT 0,
+        harga_rijek_1_level2 INTEGER DEFAULT 0,
+        harga_rijek_1_level3 INTEGER DEFAULT 0,
+        
         harga_rijek_2 INTEGER DEFAULT 0,
+        harga_rijek_2_level1 INTEGER DEFAULT 0,
+        harga_rijek_2_level2 INTEGER DEFAULT 0,
+        harga_rijek_2_level3 INTEGER DEFAULT 0,
+        
         harga_standar INTEGER DEFAULT 0,
+        harga_standar_level1 INTEGER DEFAULT 0,
+        harga_standar_level2 INTEGER DEFAULT 0,
+        harga_standar_level3 INTEGER DEFAULT 0,
+        
         harga_super_a INTEGER DEFAULT 0,
+        harga_super_a_level1 INTEGER DEFAULT 0,
+        harga_super_a_level2 INTEGER DEFAULT 0,
+        harga_super_a_level3 INTEGER DEFAULT 0,
+        
         harga_super_b INTEGER DEFAULT 0,
+        harga_super_b_level1 INTEGER DEFAULT 0,
+        harga_super_b_level2 INTEGER DEFAULT 0,
+        harga_super_b_level3 INTEGER DEFAULT 0,
+        
         harga_super_c INTEGER DEFAULT 0,
+        harga_super_c_level1 INTEGER DEFAULT 0,
+        harga_super_c_level2 INTEGER DEFAULT 0,
+        harga_super_c_level3 INTEGER DEFAULT 0,
+        
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     ''');
 
-    // Harga Jual
+    // Harga Jual dengan pembeli_id
     await db.execute('''
       CREATE TABLE harga_jual (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nama_kayu TEXT NOT NULL,
+        pembeli_id INTEGER DEFAULT 0,
+        
         harga_rijek_1 INTEGER DEFAULT 0,
+        harga_rijek_1_level1 INTEGER DEFAULT 0,
+        harga_rijek_1_level2 INTEGER DEFAULT 0,
+        harga_rijek_1_level3 INTEGER DEFAULT 0,
+        
         harga_rijek_2 INTEGER DEFAULT 0,
+        harga_rijek_2_level1 INTEGER DEFAULT 0,
+        harga_rijek_2_level2 INTEGER DEFAULT 0,
+        harga_rijek_2_level3 INTEGER DEFAULT 0,
+        
         harga_standar INTEGER DEFAULT 0,
+        harga_standar_level1 INTEGER DEFAULT 0,
+        harga_standar_level2 INTEGER DEFAULT 0,
+        harga_standar_level3 INTEGER DEFAULT 0,
+        
         harga_super_a INTEGER DEFAULT 0,
+        harga_super_a_level1 INTEGER DEFAULT 0,
+        harga_super_a_level2 INTEGER DEFAULT 0,
+        harga_super_a_level3 INTEGER DEFAULT 0,
+        
         harga_super_b INTEGER DEFAULT 0,
+        harga_super_b_level1 INTEGER DEFAULT 0,
+        harga_super_b_level2 INTEGER DEFAULT 0,
+        harga_super_b_level3 INTEGER DEFAULT 0,
+        
         harga_super_c INTEGER DEFAULT 0,
+        harga_super_c_level1 INTEGER DEFAULT 0,
+        harga_super_c_level2 INTEGER DEFAULT 0,
+        harga_super_c_level3 INTEGER DEFAULT 0,
+        
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        
+        FOREIGN KEY (pembeli_id) REFERENCES pembeli (id),
+        UNIQUE(nama_kayu, pembeli_id)
       )
     ''');
 
@@ -139,7 +498,7 @@ class DatabaseService {
       )
     ''');
 
-    // Pembelian Detail
+    // Pembelian Detail - TAMBAHKAN kolom harga_type
     await db.execute('''
       CREATE TABLE pembelian_detail (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,6 +511,7 @@ class DatabaseService {
         volume REAL NOT NULL,
         harga_beli INTEGER NOT NULL,
         jumlah_harga_beli INTEGER NOT NULL,
+        harga_type TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (faktur_pemb) REFERENCES pembelian (faktur_pemb)
       )
@@ -182,7 +542,7 @@ class DatabaseService {
       )
     ''');
 
-    // Penjualan Detail
+    // Penjualan Detail - TAMBAHKAN kolom harga_type
     await db.execute('''
       CREATE TABLE penjualan_detail (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -195,6 +555,7 @@ class DatabaseService {
         volume REAL NOT NULL,
         harga_jual INTEGER NOT NULL,
         jumlah_harga_jual INTEGER NOT NULL,
+        harga_type TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (faktur_penj) REFERENCES penjualan (faktur_penj)
       )
@@ -260,7 +621,7 @@ class DatabaseService {
       )
     ''');
 
-    // Biaya Lain - TAMBAHKAN DI SINI
+    // Biaya Lain
     await db.execute('''
       CREATE TABLE biaya_lain (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -423,17 +784,47 @@ class DatabaseService {
 
   // ========================= harga_jual =====================
   // ==========================================================
+
+  // Get all harga jual
   Future<List<Map<String, dynamic>>> getAllHargaJual() async {
     final db = await database;
     return await db.query('harga_jual', orderBy: 'nama_kayu ASC');
   }
 
+  // Get harga jual by ID
   Future<Map<String, dynamic>?> getHargaJualById(int id) async {
     final db = await database;
     final results = await db.query(
       'harga_jual',
       where: 'id = ?',
       whereArgs: [id],
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  // Get harga jual by pembeli_id
+  Future<List<Map<String, dynamic>>> getHargaJualByPembeli(
+    int pembeliId,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'harga_jual',
+      where: 'pembeli_id = ?',
+      whereArgs: [pembeliId],
+      orderBy: 'nama_kayu ASC',
+    );
+  }
+
+  // Get harga jual by pembeli_id and nama_kayu
+  Future<Map<String, dynamic>?> getHargaJualByPembeliAndKayu(
+    int pembeliId,
+    String namaKayu,
+  ) async {
+    final db = await database;
+    final results = await db.query(
+      'harga_jual',
+      where: 'pembeli_id = ? AND nama_kayu = ?',
+      whereArgs: [pembeliId, namaKayu],
     );
     return results.isNotEmpty ? results.first : null;
   }
@@ -551,20 +942,17 @@ class DatabaseService {
   }
 
   // Total kubikasi stok saat ini (pembelian - penjualan) dalam cm³
-  // Menggunakan rumus: jumlah × volume per item
   Future<double> getTotalVolumeCm3() async {
     final db = await database;
 
     try {
       // Hitung TOTAL VOLUME MASUK dari pembelian_detail (dalam cm³)
-      // Sama dengan laporan: jumlah × volume
       final resultMasuk = await db.rawQuery('''
       SELECT COALESCE(SUM(jumlah * volume), 0) as total_masuk 
       FROM pembelian_detail
     ''');
 
       // Hitung TOTAL VOLUME KELUAR dari penjualan_detail (dalam cm³)
-      // Sama dengan laporan: jumlah × volume
       final resultKeluar = await db.rawQuery('''
       SELECT COALESCE(SUM(jumlah * volume), 0) as total_keluar 
       FROM penjualan_detail
@@ -744,7 +1132,6 @@ class DatabaseService {
     return result.first['total'] as int? ?? 0;
   }
 
-  // Tambahkan method untuk sistem aktivasi di bagian akhir file
   // =============== SISTEM AKTIVASI =========================
   // ==========================================================
 

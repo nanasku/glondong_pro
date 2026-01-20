@@ -45,7 +45,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
     _fetchProducts();
   }
 
-  // Fungsi untuk mengambil data produk dari SQLite
+  // Pada bagian _fetchProducts() di master_beli.dart
   Future<void> _fetchProducts() async {
     setState(() {
       isLoading = true;
@@ -56,6 +56,12 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
       final db = await DatabaseService().database;
       final data = await db.query('harga_beli', orderBy: 'nama_kayu ASC');
 
+      // Pastikan data memiliki semua kolom yang diperlukan
+      print('Fetched ${data.length} products');
+      if (data.isNotEmpty) {
+        print('Sample product keys: ${data.first.keys.toList()}');
+      }
+
       setState(() {
         products = List<Map<String, dynamic>>.from(data);
         isLoading = false;
@@ -65,6 +71,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
         isLoading = false;
         errorMessage = 'Terjadi kesalahan: $e';
       });
+      print('Error fetching products: $e');
     }
   }
 
@@ -256,7 +263,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
           decoration: InputDecoration(
             labelText: 'Harga Dasar',
             border: OutlineInputBorder(),
-            prefixText: 'Rp ',
+            prefixText: '',
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           ),
         ),
@@ -271,7 +278,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
                 decoration: InputDecoration(
                   labelText: 'Level 1',
                   border: OutlineInputBorder(),
-                  prefixText: 'Rp ',
+                  prefixText: '',
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 10,
@@ -287,7 +294,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
                 decoration: InputDecoration(
                   labelText: 'Level 2',
                   border: OutlineInputBorder(),
-                  prefixText: 'Rp ',
+                  prefixText: '',
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 10,
@@ -303,7 +310,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
                 decoration: InputDecoration(
                   labelText: 'Level 3',
                   border: OutlineInputBorder(),
-                  prefixText: 'Rp ',
+                  prefixText: '',
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 10,
@@ -968,13 +975,13 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
             children: [
               Expanded(
                 child: Text(
-                  'Harga: Rp ${formatPrice(product[basePriceKey])}',
+                  'Harga: ${formatPrice(product[basePriceKey])}',
                   style: TextStyle(fontSize: 13, color: Colors.green),
                 ),
               ),
               Expanded(
                 child: Text(
-                  'Lvl 1: Rp ${formatPrice(product[level1Key] ?? 0)}',
+                  'Lvl 1: ${formatPrice(product[level1Key] ?? 0)}',
                   style: TextStyle(fontSize: 13, color: Colors.blue),
                 ),
               ),
@@ -984,13 +991,13 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
             children: [
               Expanded(
                 child: Text(
-                  'Lvl 2: Rp ${formatPrice(product[level2Key] ?? 0)}',
+                  'Lvl 2: ${formatPrice(product[level2Key] ?? 0)}',
                   style: TextStyle(fontSize: 13, color: Colors.orange),
                 ),
               ),
               Expanded(
                 child: Text(
-                  'Lvl 3: Rp ${formatPrice(product[level3Key] ?? 0)}',
+                  'Lvl 3: ${formatPrice(product[level3Key] ?? 0)}',
                   style: TextStyle(fontSize: 13, color: Colors.purple),
                 ),
               ),
