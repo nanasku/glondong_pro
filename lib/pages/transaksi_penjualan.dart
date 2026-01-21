@@ -22,6 +22,18 @@ class _TransaksiPenjualanState extends State<TransaksiPenjualan>
   @override
   bool get wantKeepAlive => true; // Ini akan menjaga state saat pindah halaman
 
+  // Tambahkan di awal class _TransaksiPenjualanState
+  Map<String, dynamic> _findItemById(List<dynamic> list, String? id) {
+    if (id == null) return {};
+
+    for (var item in list) {
+      if (item is Map<String, dynamic> && item['id']?.toString() == id) {
+        return Map<String, dynamic>.from(item);
+      }
+    }
+    return {};
+  }
+
   String? selectedCustomKriteria;
   bool modalVisible = false;
   String noFaktur = '';
@@ -249,6 +261,57 @@ class _TransaksiPenjualanState extends State<TransaksiPenjualan>
   }
 
   void handleAddOrUpdate() {
+    if (kayu.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Pilih jenis kayu terlebih dahulu di "Input Data"',
+            style: TextStyle(fontSize: 14),
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Buka modal otomatis
+      if (!modalVisible) {
+        setState(() {
+          modalVisible = true;
+        });
+      }
+      return;
+    }
+
+    // ⭐⭐⭐ VALIDASI 2: Pastikan pembeli sudah dipilih ⭐⭐⭐
+    if (selectedPembeliId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pilih pembeli terlebih dahulu di "Input Data"'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+
+      if (!modalVisible) {
+        setState(() {
+          modalVisible = true;
+        });
+      }
+      return;
+    }
+
+    // ⭐⭐⭐ VALIDASI 3: Pastikan harga ada ⭐⭐⭐
+    if ((harga['Rijek 1'] ?? 0) == 0 &&
+        (harga['Rijek 2'] ?? 0) == 0 &&
+        (harga['Standar'] ?? 0) == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Harga belum diatur untuk pembeli ini'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (diameter.isEmpty || panjang.isEmpty) return;
 
     double d = double.tryParse(diameter) ?? 0;
@@ -1218,20 +1281,21 @@ class _TransaksiPenjualanState extends State<TransaksiPenjualan>
 
   // Di dalam class _TransaksiPenjualanState, modifikasi fungsi _loadDataDariDatabase:
 
-// Fungsi untuk memuat data kayu dari SQLite berdasarkan pembeli yang dipilih
-Future<void> _loadHargaJualByPembeli(String? pembeliId) async {
-  try {
-    if (pembeliId == null || pembeliId.isEmpty) {
-      setState(() {
-        daftarKayu = [];
-      });
-      return;
-    }
+  // Fungsi untuk memuat data kayu dari SQLite berdasarkan pembeli yang dipilih
+  Future<void> _loadHargaJualByPembeli(String? pembeliId) async {
+    try {
+      if (pembeliId == null || pembeliId.isEmpty) {
+        setState(() {
+          daftarKayu = [];
+        });
+        return;
+      }
 
-    final db = await _dbService.database;
-    
-    // Query untuk mendapatkan harga jual berdasarkan pembeli_id
-    final kayuData = await db.rawQuery('''
+      final db = await _dbService.database;
+
+      // Query untuk mendapatkan harga jual berdasarkan pembeli_id
+      final kayuData = await db.rawQuery(
+        '''
       SELECT 
         hj.id,
         hj.nama_kayu,
@@ -1244,124 +1308,56 @@ Future<void> _loadHargaJualByPembeli(String? pembeliId) async {
       FROM harga_jual hj
       WHERE hj.pembeli_id = ?
       ORDER BY hj.nama_kayu ASC
-    ''', [int.parse(pembeliId)]);
+    ''',
+        [int.parse(pembeliId)],
+      );
 
-    setState(() {
-      daftarKayu = kayuData
-          .map(
-            (item) => {
-              'id': item['id'].toString(),
-              'nama_kayu': item['nama_kayu'] ?? '',
-              'harga_rijek_1': item['harga_rijek_1'] ?? 0,
-              'harga_rijek_2': item['harga_rijek_2'] ?? 0,
-              'harga_standar': item['harga_standar'] ?? 0,
-              'harga_super_a': item['harga_super_a'] ?? 0,
-              'harga_super_b': item['harga_super_b'] ?? 0,
-              'harga_super_c': item['harga_super_c'] ?? 0,
-            },
-          )
-          .toList();
-      
-      // Reset selected kayu jika tidak ada dalam daftar baru
-      if (selectedKayuId != null) {
-        bool kayuExists = daftarKayu.any((k) => k['id'] == selectedKayuId);
-        if (!kayuExists) {
-          selectedKayuId = null;
-          selectedKayuNama = null;
-          kayu = '';
-          harga = {
-            'Rijek 1': 0.0,
-            'Rijek 2': 0.0,
-            'Standar': 0.0,
-            'Super A': 0.0,
-            'Super B': 0.0,
-            'Super C': 0.0,
-          };
+      setState(() {
+        daftarKayu = kayuData
+            .map(
+              (item) => {
+                'id': item['id'].toString(),
+                'nama_kayu': item['nama_kayu'] ?? '',
+                'harga_rijek_1': item['harga_rijek_1'] ?? 0,
+                'harga_rijek_2': item['harga_rijek_2'] ?? 0,
+                'harga_standar': item['harga_standar'] ?? 0,
+                'harga_super_a': item['harga_super_a'] ?? 0,
+                'harga_super_b': item['harga_super_b'] ?? 0,
+                'harga_super_c': item['harga_super_c'] ?? 0,
+              },
+            )
+            .toList();
+
+        // Reset selected kayu jika tidak ada dalam daftar baru
+        if (selectedKayuId != null) {
+          bool kayuExists = daftarKayu.any((k) => k['id'] == selectedKayuId);
+          if (!kayuExists) {
+            selectedKayuId = null;
+            selectedKayuNama = null;
+            kayu = '';
+            harga = {
+              'Rijek 1': 0.0,
+              'Rijek 2': 0.0,
+              'Standar': 0.0,
+              'Super A': 0.0,
+              'Super B': 0.0,
+              'Super C': 0.0,
+            };
+          }
         }
-      }
-    });
-  } catch (error) {
-    print('Error loading harga jual by pembeli: $error');
+      });
+    } catch (error) {
+      print('Error loading harga jual by pembeli: $error');
+    }
   }
-}
-
-// Modifikasi onChanged di dropdown pembeli:
-onChanged: (String? value) {
-  setState(() {
-    selectedPembeliId = value;
-    final selected = daftarPembeli.firstWhere(
-      (p) => p['id']?.toString() == value,
-      orElse: () => <String, dynamic>{},
-    );
-    if (selected.isNotEmpty) {
-      selectedPembeliNama = selected['nama']?.toString();
-      selectedPembeliAlamat = selected['alamat']?.toString();
-      pembeli = selectedPembeliNama ?? '';
-      alamat = selectedPembeliAlamat ?? '';
-      
-      // Load harga jual berdasarkan pembeli yang dipilih
-      _loadHargaJualByPembeli(value);
-    } else {
-      // Reset jika pembeli tidak ditemukan
-      selectedPembeliNama = null;
-      selectedPembeliAlamat = null;
-      pembeli = '';
-      alamat = '';
-      daftarKayu = [];
-      selectedKayuId = null;
-      selectedKayuNama = null;
-      kayu = '';
-      harga = {
-        'Rijek 1': 0.0,
-        'Rijek 2': 0.0,
-        'Standar': 0.0,
-        'Super A': 0.0,
-        'Super B': 0.0,
-        'Super C': 0.0,
-      };
-    }
-  });
-},
-
-// Modifikasi onChanged di dropdown kayu tetap sama:
-onChanged: (String? value) {
-  setState(() {
-    selectedKayuId = value;
-    final selected = daftarKayu.firstWhere(
-      (k) => k['id']?.toString() == value,
-      orElse: () => <String, dynamic>{},
-    );
-
-    if (selected.isNotEmpty) {
-      selectedKayuNama = selected['nama_kayu']?.toString();
-      kayu = selectedKayuNama ?? '';
-
-      // Set harga dari data SQLite
-      harga = {
-        'Rijek 1': selected['harga_rijek_1'] ?? 0,
-        'Rijek 2': selected['harga_rijek_2'] ?? 0,
-        'Standar': selected['harga_standar'] ?? 0,
-        'Super A': selected['harga_super_a'] ?? 0,
-        'Super B': selected['harga_super_b'] ?? 0,
-        'Super C': selected['harga_super_c'] ?? 0,
-      };
-    } else {
-      selectedKayuNama = null;
-      kayu = '';
-      harga = {
-        'Rijek 1': 0.0,
-        'Rijek 2': 0.0,
-        'Standar': 0.0,
-        'Super A': 0.0,
-        'Super B': 0.0,
-        'Super C': 0.0,
-      };
-    }
-  });
-},
 
   @override
   Widget build(BuildContext context) {
+    // ⭐⭐⭐ DEBUG: Cek state saat rebuild ⭐⭐⭐
+    print('🔄 BUILD - kayu: "$kayu"');
+    print('🔄 BUILD - pembeli: "$pembeli"');
+    print('🔄 BUILD - harga Rijek 1: ${harga["Rijek 1"]}');
+    print('🔄 BUILD - modalVisible: $modalVisible');
     return Scaffold(
       appBar: AppBar(
         title: Text('Transaksi Penjualan'),
@@ -1970,6 +1966,7 @@ onChanged: (String? value) {
                           child: Text(pembeli['nama']?.toString() ?? ''),
                         );
                       }).toList(),
+                      // Modifikasi onChanged di dropdown pembeli:
                       onChanged: (String? value) {
                         setState(() {
                           selectedPembeliId = value;
@@ -1983,6 +1980,27 @@ onChanged: (String? value) {
                                 ?.toString();
                             pembeli = selectedPembeliNama ?? '';
                             alamat = selectedPembeliAlamat ?? '';
+
+                            // Load harga jual berdasarkan pembeli yang dipilih
+                            _loadHargaJualByPembeli(value);
+                          } else {
+                            // Reset jika pembeli tidak ditemukan
+                            selectedPembeliNama = null;
+                            selectedPembeliAlamat = null;
+                            pembeli = '';
+                            alamat = '';
+                            daftarKayu = [];
+                            selectedKayuId = null;
+                            selectedKayuNama = null;
+                            kayu = '';
+                            harga = {
+                              'Rijek 1': 0.0,
+                              'Rijek 2': 0.0,
+                              'Standar': 0.0,
+                              'Super A': 0.0,
+                              'Super B': 0.0,
+                              'Super C': 0.0,
+                            };
                           }
                         });
                       },
@@ -2012,6 +2030,7 @@ onChanged: (String? value) {
                           child: Text(kayu['nama_kayu']?.toString() ?? ''),
                         );
                       }).toList(),
+                      // Modifikasi onChanged di dropdown kayu tetap sama:
                       onChanged: (String? value) {
                         setState(() {
                           selectedKayuId = value;
@@ -2033,6 +2052,17 @@ onChanged: (String? value) {
                               'Super A': selected['harga_super_a'] ?? 0,
                               'Super B': selected['harga_super_b'] ?? 0,
                               'Super C': selected['harga_super_c'] ?? 0,
+                            };
+                          } else {
+                            selectedKayuNama = null;
+                            kayu = '';
+                            harga = {
+                              'Rijek 1': 0.0,
+                              'Rijek 2': 0.0,
+                              'Standar': 0.0,
+                              'Super A': 0.0,
+                              'Super B': 0.0,
+                              'Super C': 0.0,
                             };
                           }
                         });
@@ -2187,17 +2217,50 @@ onChanged: (String? value) {
                             onPressed: () {
                               if (selectedPembeliId != null &&
                                   selectedKayuId != null) {
-                                setState(() {
-                                  modalVisible = false;
-                                });
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Pilih pembeli dan jenis kayu terlebih dahulu',
-                                    ),
-                                  ),
+                                // Gunakan fungsi helper
+                                final selectedPembeli = _findItemById(
+                                  daftarPembeli,
+                                  selectedPembeliId,
                                 );
+                                final selectedKayu = _findItemById(
+                                  daftarKayu,
+                                  selectedKayuId,
+                                );
+
+                                if (selectedPembeli.isNotEmpty &&
+                                    selectedKayu.isNotEmpty) {
+                                  setState(() {
+                                    pembeli =
+                                        selectedPembeli['nama']?.toString() ??
+                                        '';
+                                    alamat =
+                                        selectedPembeli['alamat']?.toString() ??
+                                        '';
+                                    kayu =
+                                        selectedKayu['nama_kayu']?.toString() ??
+                                        '';
+
+                                    harga = {
+                                      'Rijek 1':
+                                          selectedKayu['harga_rijek_1'] ?? 0,
+                                      'Rijek 2':
+                                          selectedKayu['harga_rijek_2'] ?? 0,
+                                      'Standar':
+                                          selectedKayu['harga_standar'] ?? 0,
+                                      'Super A':
+                                          selectedKayu['harga_super_a'] ?? 0,
+                                      'Super B':
+                                          selectedKayu['harga_super_b'] ?? 0,
+                                      'Super C':
+                                          selectedKayu['harga_super_c'] ?? 0,
+                                    };
+
+                                    modalVisible = false;
+                                  });
+
+                                  print('✅ Modal disimpan - Kayu: "$kayu"');
+                                  _saveCurrentTransaction();
+                                }
                               }
                             },
                             child: Text('Simpan'),
