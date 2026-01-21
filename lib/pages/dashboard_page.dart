@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tpk_app/pages/master_beli.dart';
-import 'package:tpk_app/pages/profil.dart';
+import 'package:tpk_app/pages/master_jual.dart';
 import 'package:tpk_app/services/database_service.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -170,21 +170,6 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
           const SizedBox(height: 8.0),
-          // Info rumus
-          // Container(
-          //   padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-          //   decoration: BoxDecoration(
-          //     color: Colors.blue[50],
-          //     borderRadius: BorderRadius.circular(4.0),
-          //   ),
-          //   child: Row(
-          //     mainAxisSize: MainAxisSize.min,
-          //     children: [
-          //       Icon(Icons.info, size: 10, color: Colors.blue[700]),
-          //       const SizedBox(width: 4),
-          //     ],
-          //   ),
-          // ),
         ],
       ),
     );
@@ -289,10 +274,10 @@ class _DashboardPageState extends State<DashboardPage> {
           () => widget.onNavigateToPage(const MasterBeliPage()),
         ),
         _buildDashboardCard(
-          'Profil',
-          Icons.settings,
+          'Data Harga\nJual',
+          Icons.attach_money,
           Colors.teal,
-          () => widget.onNavigateToPage(ProfilPage(onProfileUpdated: () {})),
+          () => widget.onNavigateToPage(const MasterJualPage()),
         ),
       ],
     );

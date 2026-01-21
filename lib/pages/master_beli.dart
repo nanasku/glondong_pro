@@ -9,17 +9,18 @@ class MasterBeliPage extends StatefulWidget {
 }
 
 class _MasterBeliPageState extends State<MasterBeliPage> {
-  // ✅ Labels untuk harga
+  // ✅ Labels untuk harga dengan deskripsi singkat
   final Map<String, String> priceLabels = {
-    'harga_rijek_1': 'Harga Rijek 1 (D 10-14)',
-    'harga_rijek_2': 'Harga Rijek 2 (D 15-19)',
-    'harga_standar': 'Harga Standar (D 20 Up)',
-    'harga_super_a': 'Harga Super A Custom',
-    'harga_super_b': 'Harga Super B Custom',
-    'harga_super_c': 'Harga Super C (D 25 Up)',
+    'harga_rijek_1': 'Rijek 1 (D10-14)',
+    'harga_rijek_2': 'Rijek 2 (D15-19)',
+    'harga_standar': 'Standar (D20 Up)',
+    'harga_super_a': 'Super A',
+    'harga_super_b': 'Super B',
+    'harga_super_c': 'Super C (D25 Up)',
   };
 
   List<Map<String, dynamic>> products = [];
+  Map<int, bool> expandedStates = {}; // Untuk melacak state expand/collapse
   bool isLoading = true;
   String errorMessage = '';
 
@@ -39,13 +40,19 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
     return number.toString();
   }
 
+  // Toggle expand/collapse state
+  void _toggleExpand(int id) {
+    setState(() {
+      expandedStates[id] = !(expandedStates[id] ?? false);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _fetchProducts();
   }
 
-  // Pada bagian _fetchProducts() di master_beli.dart
   Future<void> _fetchProducts() async {
     setState(() {
       isLoading = true;
@@ -56,14 +63,15 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
       final db = await DatabaseService().database;
       final data = await db.query('harga_beli', orderBy: 'nama_kayu ASC');
 
-      // Pastikan data memiliki semua kolom yang diperlukan
-      print('Fetched ${data.length} products');
-      if (data.isNotEmpty) {
-        print('Sample product keys: ${data.first.keys.toList()}');
+      // Inisialisasi semua state collapsed secara default
+      final expandedMap = <int, bool>{};
+      for (var product in data) {
+        expandedMap[product['id'] as int] = false;
       }
 
       setState(() {
         products = List<Map<String, dynamic>>.from(data);
+        expandedStates = expandedMap;
         isLoading = false;
       });
     } catch (e) {
@@ -79,7 +87,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
   Future<void> _addProduct(Map<String, dynamic> newProduct) async {
     try {
       final db = await DatabaseService().database;
-      await db.insert('harga_beli', {
+      final result = await db.insert('harga_beli', {
         'nama_kayu': newProduct['nama_kayu'],
         // Rijek 1 dengan level
         'harga_rijek_1': int.tryParse(newProduct['harga_rijek_1'] ?? '0') ?? 0,
@@ -137,6 +145,11 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
 
         'created_at': DateTime.now().toString(),
         'updated_at': DateTime.now().toString(),
+      });
+
+      // Tambahkan state expand untuk produk baru
+      setState(() {
+        expandedStates[result] = false;
       });
 
       // Refresh data setelah berhasil menambah
@@ -234,6 +247,11 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
       final db = await DatabaseService().database;
       await db.delete('harga_beli', where: 'id = ?', whereArgs: [id]);
 
+      // Hapus state expand
+      setState(() {
+        expandedStates.remove(id);
+      });
+
       // Refresh data setelah berhasil menghapus
       _fetchProducts();
     } catch (e) {
@@ -276,7 +294,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
                 controller: controllers['${category}_level1'],
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Level 1',
+                  labelText: 'Lv 1',
                   border: OutlineInputBorder(),
                   prefixText: '',
                   contentPadding: EdgeInsets.symmetric(
@@ -292,7 +310,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
                 controller: controllers['${category}_level2'],
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Level 2',
+                  labelText: 'Lv 2',
                   border: OutlineInputBorder(),
                   prefixText: '',
                   contentPadding: EdgeInsets.symmetric(
@@ -308,7 +326,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
                 controller: controllers['${category}_level3'],
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Level 3',
+                  labelText: 'Lv 3',
                   border: OutlineInputBorder(),
                   prefixText: '',
                   contentPadding: EdgeInsets.symmetric(
@@ -349,10 +367,10 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
       text: formatPrice(product['harga_rijek_2_level1'] ?? '0'),
     );
     controllers['harga_rijek_2_level2'] = TextEditingController(
-      text: formatPrice(product['harga_rijek_2_level1'] ?? '0'),
+      text: formatPrice(product['harga_rijek_2_level2'] ?? '0'),
     );
     controllers['harga_rijek_2_level3'] = TextEditingController(
-      text: formatPrice(product['harga_rijek_2_level1'] ?? '0'),
+      text: formatPrice(product['harga_rijek_2_level3'] ?? '0'),
     );
 
     controllers['harga_standar'] = TextEditingController(
@@ -415,7 +433,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Edit Harga Produk'),
+          title: Text('Edit Harga Kayu'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -551,11 +569,11 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
                   await _updateProduct(updatedProduct);
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Produk berhasil diupdate')),
+                    SnackBar(content: Text('Kayu berhasil diupdate')),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal mengupdate produk: $e')),
+                    SnackBar(content: Text('Gagal mengupdate kayu: $e')),
                   );
                 }
               },
@@ -607,7 +625,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Tambah Produk Baru'),
+          title: Text('➕ Kayu Baru'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -741,11 +759,11 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
                   await _addProduct(newProduct);
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Produk berhasil ditambah')),
+                    SnackBar(content: Text('Kayu berhasil ditambah')),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal menambah produk: $e')),
+                    SnackBar(content: Text('Gagal menambah kayu: $e')),
                   );
                 }
               },
@@ -762,7 +780,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Hapus Produk'),
+          title: Text('Hapus Kayu'),
           content: Text('Apakah Anda yakin ingin menghapus $nama_kayu?'),
           actions: [
             TextButton(
@@ -857,14 +875,7 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
                 ],
               ),
             )
-          : ListView.builder(
-              padding: EdgeInsets.all(16),
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final product = products[index];
-                return _buildProductCard(product);
-              },
-            ),
+          : _buildProductList(),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddProductDialog,
         backgroundColor: Colors.blue,
@@ -873,137 +884,215 @@ class _MasterBeliPageState extends State<MasterBeliPage> {
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> product) {
-    return Card(
-      elevation: 2,
-      margin: EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.blue[100],
-                  child: Icon(Icons.forest, color: Colors.green),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    product['nama_kayu'],
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      _showEditProductDialog(product);
-                    } else if (value == 'delete') {
-                      _showDeleteConfirmationDialog(
-                        product['id'],
-                        product['nama_kayu'],
-                      );
-                    }
-                  },
-                  itemBuilder: (BuildContext context) => [
-                    PopupMenuItem<String>(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, size: 20),
-                          SizedBox(width: 8),
-                          Text('Edit'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem<String>(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, color: Colors.red, size: 20),
-                          SizedBox(width: 8),
-                          Text('Hapus'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Divider(),
-            SizedBox(height: 8),
+  Widget _buildProductList() {
+    return ListView.builder(
+      padding: EdgeInsets.all(8),
+      itemCount: products.length,
+      itemBuilder: (context, index) {
+        final product = products[index];
+        final isExpanded = expandedStates[product['id']] ?? false;
+        return _buildExpandableProductCard(product, isExpanded);
+      },
+    );
+  }
 
-            // Harga-harga dengan level
-            _buildPriceWithLevels('Rijek 1', product),
-            _buildPriceWithLevels('Rijek 2', product),
-            _buildPriceWithLevels('Standar', product),
-            _buildPriceWithLevels('Super A', product),
-            _buildPriceWithLevels('Super B', product),
-            _buildPriceWithLevels('Super C', product),
-          ],
-        ),
+  Widget _buildExpandableProductCard(
+    Map<String, dynamic> product,
+    bool isExpanded,
+  ) {
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      child: Column(
+        children: [
+          // Header yang bisa di-klik untuk expand/collapse
+          InkWell(
+            onTap: () => _toggleExpand(product['id']),
+            child: Container(
+              padding: EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.forest,
+                      size: 16,
+                      color: Colors.green[700],
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      product['nama_kayu'],
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  // Tombol expand/collapse
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.blue[600],
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  // Tombol edit
+                  IconButton(
+                    icon: Icon(Icons.edit, size: 18),
+                    onPressed: () => _showEditProductDialog(product),
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    tooltip: 'Edit',
+                  ),
+                  SizedBox(width: 4),
+                  // Tombol hapus
+                  IconButton(
+                    icon: Icon(Icons.delete, size: 18, color: Colors.red),
+                    onPressed: () => _showDeleteConfirmationDialog(
+                      product['id'],
+                      product['nama_kayu'],
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    tooltip: 'Hapus',
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Konten yang bisa di-expand/collapse
+          AnimatedCrossFade(
+            firstChild: Container(), // Saat collapsed, kosong
+            secondChild: Padding(
+              padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Column(
+                children: [
+                  Divider(height: 1, thickness: 0.5),
+                  SizedBox(height: 8),
+                  _buildPriceListForProduct(product),
+                ],
+              ),
+            ),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: Duration(milliseconds: 200),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPriceWithLevels(String category, Map<String, dynamic> product) {
-    String basePriceKey =
-        'harga_${category.toLowerCase().replaceAll(' ', '_')}';
-    String level1Key = '${basePriceKey}_level1';
-    String level2Key = '${basePriceKey}_level2';
-    String level3Key = '${basePriceKey}_level3';
+  Widget _buildPriceListForProduct(Map<String, dynamic> product) {
+    // Daftar kategori harga
+    final categories = [
+      'harga_rijek_1',
+      'harga_rijek_2',
+      'harga_standar',
+      'harga_super_a',
+      'harga_super_b',
+      'harga_super_c',
+    ];
 
-    String label = priceLabels[basePriceKey] ?? category;
+    return Column(
+      children: categories.map((category) {
+        return _buildPriceItem(category, product);
+      }).toList(),
+    );
+  }
 
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+  Widget _buildPriceItem(String category, Map<String, dynamic> product) {
+    final basePrice = formatPrice(product[category]);
+    final level1Price = formatPrice(product['${category}_level1'] ?? 0);
+    final level2Price = formatPrice(product['${category}_level2'] ?? 0);
+    final level3Price = formatPrice(product['${category}_level3'] ?? 0);
+
+    final label = priceLabels[category] ?? category;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Baris label dan harga dasar
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue[800],
+                ),
+              ),
+            ),
+            Text(
+              'Rp $basePrice',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.green[700],
+              ),
+            ),
+          ],
+        ),
+
+        SizedBox(height: 4),
+
+        // Baris level harga
+        Row(
+          children: [
+            Expanded(
+              child: _buildLevelItem('Lv 1', level1Price, Colors.blue[700]!),
+            ),
+            SizedBox(width: 4),
+            Expanded(
+              child: _buildLevelItem('Lv 2', level2Price, Colors.orange[700]!),
+            ),
+            SizedBox(width: 4),
+            Expanded(
+              child: _buildLevelItem('Lv 3', level3Price, Colors.purple[700]!),
+            ),
+          ],
+        ),
+
+        SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildLevelItem(String label, String price, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            price,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Harga: ${formatPrice(product[basePriceKey])}',
-                  style: TextStyle(fontSize: 13, color: Colors.green),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  'Lvl 1: ${formatPrice(product[level1Key] ?? 0)}',
-                  style: TextStyle(fontSize: 13, color: Colors.blue),
-                ),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Lvl 2: ${formatPrice(product[level2Key] ?? 0)}',
-                  style: TextStyle(fontSize: 13, color: Colors.orange),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  'Lvl 3: ${formatPrice(product[level3Key] ?? 0)}',
-                  style: TextStyle(fontSize: 13, color: Colors.purple),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
         ],
       ),
     );

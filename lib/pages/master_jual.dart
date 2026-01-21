@@ -183,7 +183,7 @@ class _MasterJualPageState extends State<MasterJualPage> {
       _fetchProducts();
       _fetchAvailableData(); // Refresh list nama kayu dan pembeli
     } catch (e) {
-      throw Exception('Gagal menambah produk: $e');
+      throw Exception('Gagal menambah kayu: $e');
     }
   }
 
@@ -222,7 +222,7 @@ class _MasterJualPageState extends State<MasterJualPage> {
       _fetchProducts();
       _fetchAvailableData(); // Refresh list nama kayu dan pembeli
     } catch (e) {
-      throw Exception('Gagal mengupdate produk: $e');
+      throw Exception('Gagal mengupdate kayu: $e');
     }
   }
 
@@ -237,7 +237,7 @@ class _MasterJualPageState extends State<MasterJualPage> {
       _fetchProducts();
       _fetchAvailableData(); // Refresh list nama kayu dan pembeli
     } catch (e) {
-      throw Exception('Gagal menghapus produk: $e');
+      throw Exception('Gagal menghapus kayu: $e');
     }
   }
 
@@ -256,7 +256,7 @@ class _MasterJualPageState extends State<MasterJualPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Edit Harga Produk'),
+          title: Text('Edit Harga Kayu'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -372,11 +372,11 @@ class _MasterJualPageState extends State<MasterJualPage> {
                   await _updateProduct(updatedProduct);
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Produk berhasil diupdate')),
+                    SnackBar(content: Text('Kayu berhasil diupdate')),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal mengupdate produk: $e')),
+                    SnackBar(content: Text('Gagal mengupdate kayu: $e')),
                   );
                 }
               },
