@@ -9,31 +9,27 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class TransaksiPembelian extends StatefulWidget {
-  const TransaksiPembelian({super.key});
+class TransaksiOperNotaPage extends StatefulWidget {
+  const TransaksiOperNotaPage({super.key});
 
   @override
-  _TransaksiPembelianState createState() => _TransaksiPembelianState();
+  _TransaksiOperNotaPageState createState() => _TransaksiOperNotaPageState();
 }
 
-// ENUM untuk jenis harga - DIPINDAHKAN KE LUAR CLASS
-enum HargaType { umum, level1, level2, level3 }
-
-class _TransaksiPembelianState extends State<TransaksiPembelian>
+class _TransaksiOperNotaPageState extends State<TransaksiOperNotaPage>
     with AutomaticKeepAliveClientMixin {
   @override
-  bool get wantKeepAlive => true; // Ini akan menjaga state saat pindah halaman
+  bool get wantKeepAlive => true;
 
-  String? selectedCustomKriteria;
+  // Variabel untuk modal
   bool modalVisible = false;
   String noFaktur = '';
-  String penjual = '';
+  String pembeli = '';
   String alamat = '';
   String kayu = '';
+  String fakturPembelian = ''; // Tambahkan field untuk faktur pembelian
 
-  // Variabel untuk jenis harga
-  HargaType selectedHargaType = HargaType.umum;
-
+  // Harga jual berdasarkan pembeli
   Map<String, dynamic> harga = {
     'Rijek 1': 0.0,
     'Rijek 2': 0.0,
@@ -43,69 +39,54 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     'Super C': 0.0,
   };
 
-  Map<String, dynamic> hargaLevel1 = {
-    'Rijek 1': 0.0,
-    'Rijek 2': 0.0,
-    'Standar': 0.0,
-    'Super A': 0.0,
-    'Super B': 0.0,
-    'Super C': 0.0,
-  };
-
-  Map<String, dynamic> hargaLevel2 = {
-    'Rijek 1': 0.0,
-    'Rijek 2': 0.0,
-    'Standar': 0.0,
-    'Super A': 0.0,
-    'Super B': 0.0,
-    'Super C': 0.0,
-  };
-
-  Map<String, dynamic> hargaLevel3 = {
-    'Rijek 1': 0.0,
-    'Rijek 2': 0.0,
-    'Standar': 0.0,
-    'Super A': 0.0,
-    'Super B': 0.0,
-    'Super C': 0.0,
-  };
-
-  String kriteria = '';
+  // Input data
   String diameter = '';
   String panjang = '';
   List<Map<String, dynamic>> data = [];
   String? latestItemId;
 
+  // Custom volumes
   List<Map<String, dynamic>> customVolumes = [];
   String customDiameter = '';
   String customVolumeValue = '';
 
+  // Custom kriteria
+  String? selectedCustomKriteria;
+
+  // Scroll controller
   ScrollController _scrollController = ScrollController();
+
+  // Services
   final DatabaseService _dbService = DatabaseService();
   final PreferencesService _prefs = PreferencesService();
 
-  // Data dari database SQLite
-  List<Map<String, dynamic>> daftarPenjual = [];
+  // Data dari database
+  List<Map<String, dynamic>> daftarPembeli = [];
   List<Map<String, dynamic>> daftarKayu = [];
-  String? selectedPenjualId;
+  List<Map<String, dynamic>> daftarFakturPembelian =
+      []; // Daftar faktur pembelian
+  String? selectedPembeliId;
   String? selectedKayuId;
-  String? selectedPenjualNama;
-  String? selectedPenjualAlamat;
+  String? selectedFakturPembelian; // Faktur pembelian yang dipilih
+  String? selectedPembeliNama;
+  String? selectedPembeliAlamat;
   String? selectedKayuNama;
 
-  // Variabel untuk operasional
+  // Operasional
   List<Map<String, dynamic>> operasionals = [];
   TextEditingController operasionalJenisController = TextEditingController();
   TextEditingController operasionalBiayaController = TextEditingController();
   String operasionalTipe = 'tambah';
 
-  // TextEditingController
+  // Controllers
   TextEditingController diameterController = TextEditingController();
   TextEditingController panjangController = TextEditingController();
   TextEditingController customDiameterController = TextEditingController();
   TextEditingController customVolumeController = TextEditingController();
+  TextEditingController fakturPembelianController =
+      TextEditingController(); // Controller untuk faktur pembelian
 
-  // Formatter untuk currency
+  // Formatter
   final formatter = NumberFormat.currency(
     locale: 'id_ID',
     symbol: '',
@@ -136,6 +117,9 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     panjangController.dispose();
     customDiameterController.dispose();
     customVolumeController.dispose();
+    fakturPembelianController.dispose();
+    operasionalJenisController.dispose();
+    operasionalBiayaController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -146,20 +130,22 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
       diameterController.clear();
       customDiameterController.clear();
       customVolumeController.clear();
+      fakturPembelianController.clear();
       operasionalJenisController.clear();
       operasionalBiayaController.clear();
 
       selectedCustomKriteria = null;
-      selectedPenjualId = null;
-      selectedPenjualNama = null;
-      selectedPenjualAlamat = null;
+      selectedPembeliId = null;
+      selectedPembeliNama = null;
+      selectedPembeliAlamat = null;
       selectedKayuId = null;
       selectedKayuNama = null;
-      selectedHargaType = HargaType.umum;
+      selectedFakturPembelian = null;
 
-      penjual = '';
+      pembeli = '';
       alamat = '';
       kayu = '';
+      fakturPembelian = '';
       diameter = '';
       panjang = '';
       customDiameter = '';
@@ -169,7 +155,6 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
       data.clear();
       operasionals.clear();
       customVolumes.clear();
-
       harga = {
         'Rijek 1': 0.0,
         'Rijek 2': 0.0,
@@ -178,34 +163,6 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         'Super B': 0.0,
         'Super C': 0.0,
       };
-
-      hargaLevel1 = {
-        'Rijek 1': 0.0,
-        'Rijek 2': 0.0,
-        'Standar': 0.0,
-        'Super A': 0.0,
-        'Super B': 0.0,
-        'Super C': 0.0,
-      };
-
-      hargaLevel2 = {
-        'Rijek 1': 0.0,
-        'Rijek 2': 0.0,
-        'Standar': 0.0,
-        'Super A': 0.0,
-        'Super B': 0.0,
-        'Super C': 0.0,
-      };
-
-      hargaLevel3 = {
-        'Rijek 1': 0.0,
-        'Rijek 2': 0.0,
-        'Standar': 0.0,
-        'Super A': 0.0,
-        'Super B': 0.0,
-        'Super C': 0.0,
-      };
-
       modalVisible = false;
     });
 
@@ -221,16 +178,18 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     return data.fold(0, (sum, item) => sum + item['jumlahHarga']);
   }
 
+  // Fungsi untuk memuat data dari database
   Future<void> _loadDataDariDatabase() async {
-    await _loadPenjual();
-    await _loadKayu();
+    await _loadPembeli();
+    await _loadFakturPembelian(); // Memuat daftar faktur pembelian
   }
 
-  Future<void> _loadPenjual() async {
+  // Fungsi untuk memuat data pembeli
+  Future<void> _loadPembeli() async {
     try {
-      final penjualData = await _dbService.getAllPenjual();
+      final pembeliData = await _dbService.getAllPembeli();
       setState(() {
-        daftarPenjual = penjualData
+        daftarPembeli = pembeliData
             .map(
               (item) => {
                 'id': item['id'].toString(),
@@ -243,56 +202,176 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
             .toList();
       });
     } catch (error) {
-      print('Error loading penjual: $error');
+      print('Error loading pembeli: $error');
     }
   }
 
-  Future<void> _loadKayu() async {
+  // Fungsi untuk memuat daftar faktur pembelian
+  Future<void> _loadFakturPembelian() async {
     try {
-      final kayuData = await _dbService.getAllHargaBeli();
+      final db = await _dbService.database;
+      final fakturData = await db.query(
+        'pembelian',
+        columns: ['faktur_pemb'],
+        orderBy: 'id DESC',
+      );
+
+      setState(() {
+        daftarFakturPembelian = fakturData
+            .map((item) => {'faktur_pemb': item['faktur_pemb'] ?? ''})
+            .toList();
+      });
+    } catch (error) {
+      print('Error loading faktur pembelian: $error');
+    }
+  }
+
+  // Fungsi untuk memuat detail pembelian berdasarkan faktur
+  Future<void> _loadDetailPembelian(String faktur) async {
+    try {
+      final db = await _dbService.database;
+
+      // Ambil data pembelian
+      final pembelianData = await db.query(
+        'pembelian',
+        where: 'faktur_pemb = ?',
+        whereArgs: [faktur],
+      );
+
+      if (pembelianData.isNotEmpty) {
+        final pembelian = pembelianData.first;
+        final productId = pembelian['product_id'];
+
+        // Ambil detail pembelian
+        final detailData = await db.query(
+          'pembelian_detail',
+          where: 'faktur_pemb = ?',
+          whereArgs: [faktur],
+        );
+
+        if (detailData.isNotEmpty) {
+          // Ambil nama kayu dari detail pertama
+          final detail = detailData.first;
+          final namaKayu = detail['nama_kayu'] as String? ?? '';
+
+          setState(() {
+            kayu = namaKayu;
+            selectedKayuNama = namaKayu;
+
+            // Kosongkan data sebelum menambahkan yang baru
+            data.clear();
+
+            // Tambahkan semua item dari pembelian ke data transaksi
+            for (var item in detailData) {
+              final newItem = {
+                'id':
+                    DateTime.now().millisecondsSinceEpoch.toString() +
+                    "_${item['id']}",
+                'kriteria': item['kriteria'] ?? '',
+                'diameter': (item['diameter'] as int?)?.toDouble() ?? 0.0,
+                'panjang': (item['panjang'] as int?)?.toDouble() ?? 0.0,
+                'jumlah': item['jumlah'] ?? 1,
+                'volume': (item['volume'] as num?)?.toDouble() ?? 0.0,
+                'harga': 0, // Harga akan diisi berdasarkan harga jual pembeli
+                'jumlahHarga': 0, // Akan dihitung setelah harga ditentukan
+                'from_pembelian':
+                    true, // Flag bahwa item berasal dari pembelian
+                'pembelian_detail_id': item['id'], // Simpan ID detail pembelian
+              };
+
+              data.add(newItem);
+            }
+
+            // Sort data
+            data = sortData(data);
+          });
+
+          // Set faktur pembelian di controller
+          fakturPembelianController.text = faktur;
+          fakturPembelian = faktur;
+          selectedFakturPembelian = faktur;
+        }
+      }
+    } catch (error) {
+      print('Error loading detail pembelian: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memuat data pembelian: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Fungsi untuk memuat harga jual berdasarkan pembeli
+  Future<void> _loadHargaJualByPembeli(String? pembeliId) async {
+    try {
+      if (pembeliId == null || pembeliId.isEmpty) {
+        setState(() {
+          daftarKayu = [];
+        });
+        return;
+      }
+
+      final db = await _dbService.database;
+      final kayuData = await db.rawQuery(
+        '''
+        SELECT 
+          hj.id,
+          hj.nama_kayu,
+          hj.harga_rijek_1,
+          hj.harga_rijek_2,
+          hj.harga_standar,
+          hj.harga_super_a,
+          hj.harga_super_b,
+          hj.harga_super_c
+        FROM harga_jual hj
+        WHERE hj.pembeli_id = ?
+        ORDER BY hj.nama_kayu ASC
+        ''',
+        [int.parse(pembeliId)],
+      );
+
       setState(() {
         daftarKayu = kayuData
             .map(
               (item) => {
                 'id': item['id'].toString(),
                 'nama_kayu': item['nama_kayu'] ?? '',
-
                 'harga_rijek_1': item['harga_rijek_1'] ?? 0,
                 'harga_rijek_2': item['harga_rijek_2'] ?? 0,
                 'harga_standar': item['harga_standar'] ?? 0,
                 'harga_super_a': item['harga_super_a'] ?? 0,
                 'harga_super_b': item['harga_super_b'] ?? 0,
                 'harga_super_c': item['harga_super_c'] ?? 0,
-
-                'harga_rijek_1_level1': item['harga_rijek_1_level1'] ?? 0,
-                'harga_rijek_2_level1': item['harga_rijek_2_level1'] ?? 0,
-                'harga_standar_level1': item['harga_standar_level1'] ?? 0,
-                'harga_super_a_level1': item['harga_super_a_level1'] ?? 0,
-                'harga_super_b_level1': item['harga_super_b_level1'] ?? 0,
-                'harga_super_c_level1': item['harga_super_c_level1'] ?? 0,
-
-                'harga_rijek_1_level2': item['harga_rijek_1_level2'] ?? 0,
-                'harga_rijek_2_level2': item['harga_rijek_2_level2'] ?? 0,
-                'harga_standar_level2': item['harga_standar_level2'] ?? 0,
-                'harga_super_a_level2': item['harga_super_a_level2'] ?? 0,
-                'harga_super_b_level2': item['harga_super_b_level2'] ?? 0,
-                'harga_super_c_level2': item['harga_super_c_level2'] ?? 0,
-
-                'harga_rijek_1_level3': item['harga_rijek_1_level3'] ?? 0,
-                'harga_rijek_2_level3': item['harga_rijek_2_level3'] ?? 0,
-                'harga_standar_level3': item['harga_standar_level3'] ?? 0,
-                'harga_super_a_level3': item['harga_super_a_level3'] ?? 0,
-                'harga_super_b_level3': item['harga_super_b_level3'] ?? 0,
-                'harga_super_c_level3': item['harga_super_c_level3'] ?? 0,
               },
             )
             .toList();
+
+        // Reset selected kayu jika tidak ada dalam daftar baru
+        if (selectedKayuId != null) {
+          bool kayuExists = daftarKayu.any((k) => k['id'] == selectedKayuId);
+          if (!kayuExists) {
+            selectedKayuId = null;
+            selectedKayuNama = null;
+            kayu = '';
+            harga = {
+              'Rijek 1': 0.0,
+              'Rijek 2': 0.0,
+              'Standar': 0.0,
+              'Super A': 0.0,
+              'Super B': 0.0,
+              'Super C': 0.0,
+            };
+          }
+        }
       });
     } catch (error) {
-      print('Error loading kayu: $error');
+      print('Error loading harga jual by pembeli: $error');
     }
   }
 
+  // Generate nomor faktur baru untuk penjualan
   Future<void> getNoFakturBaru() async {
     try {
       final now = DateTime.now();
@@ -300,66 +379,103 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
       final db = await _dbService.database;
       final lastFaktur = await db.query(
-        'pembelian',
-        where: 'faktur_pemb LIKE ?',
-        whereArgs: ['PB$dateStr%'],
+        'penjualan',
+        where: 'faktur_penj LIKE ?',
+        whereArgs: ['PJ$dateStr%'],
         orderBy: 'id DESC',
         limit: 1,
       );
 
       int nextNumber = 1;
       if (lastFaktur.isNotEmpty) {
-        final lastFakturStr = lastFaktur.first['faktur_pemb'] as String;
+        final lastFakturStr = lastFaktur.first['faktur_penj'] as String;
         final lastNum = int.tryParse(lastFakturStr.substring(8)) ?? 0;
         nextNumber = lastNum + 1;
       }
 
       setState(() {
-        noFaktur = 'PB${dateStr}${nextNumber.toString().padLeft(3, '0')}';
+        noFaktur = 'PJ${dateStr}${nextNumber.toString().padLeft(3, '0')}';
       });
     } catch (e) {
       setState(() {
-        noFaktur = 'PB${DateFormat('ddMMyy').format(DateTime.now())}001';
+        noFaktur = 'PJ${DateFormat('ddMMyy').format(DateTime.now())}001';
       });
     }
   }
 
-  double _getHargaBerdasarkanType(String kriteria) {
-    switch (selectedHargaType) {
-      case HargaType.level1:
-        return (hargaLevel1[kriteria] ?? 0).toDouble();
-      case HargaType.level2:
-        return (hargaLevel2[kriteria] ?? 0).toDouble();
-      case HargaType.level3:
-        return (hargaLevel3[kriteria] ?? 0).toDouble();
-      case HargaType.umum:
-      default:
-        return (harga[kriteria] ?? 0).toDouble();
-    }
-  }
-
-  String _getHargaTypeLabel() {
-    switch (selectedHargaType) {
-      case HargaType.umum:
-        return 'Um';
-      case HargaType.level1:
-        return 'Lv 1';
-      case HargaType.level2:
-        return 'Lv 2';
-      case HargaType.level3:
-        return 'Lv 3';
-      default:
-        return 'Um';
-    }
-  }
-
+  // Fungsi utama untuk menambah atau update item
   void handleAddOrUpdate() {
-    if (diameter.isEmpty || panjang.isEmpty) return;
+    // Validasi: Pilih pembeli terlebih dahulu
+    if (selectedPembeliId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pilih pembeli terlebih dahulu di "Input Data"'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+
+      if (!modalVisible) {
+        setState(() {
+          modalVisible = true;
+        });
+      }
+      return;
+    }
+
+    // Validasi: Pilih kayu terlebih dahulu
+    if (kayu.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pilih jenis kayu terlebih dahulu di "Input Data"'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+
+      if (!modalVisible) {
+        setState(() {
+          modalVisible = true;
+        });
+      }
+      return;
+    }
+
+    // Validasi: Harga harus ada
+    if ((harga['Rijek 1'] ?? 0) == 0 &&
+        (harga['Rijek 2'] ?? 0) == 0 &&
+        (harga['Standar'] ?? 0) == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Harga belum diatur untuk pembeli ini'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validasi: Input diameter dan panjang
+    if (diameter.isEmpty || panjang.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Masukkan diameter dan panjang'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     double d = double.tryParse(diameter) ?? 0;
     double p = double.tryParse(panjang) ?? 0;
-    if (d == 0 || p == 0) return;
+    if (d == 0 || p == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Diameter dan panjang harus lebih dari 0'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
+    // Tentukan kriteria berdasarkan diameter atau custom
     String currentKriteria = selectedCustomKriteria ?? '';
     if (currentKriteria.isEmpty) {
       if (d >= 10 && d <= 14) {
@@ -373,6 +489,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
       }
     }
 
+    // Normalisasi label
     String normalizeKriteria(String label) {
       switch (label) {
         case 'R1':
@@ -393,21 +510,32 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     }
 
     currentKriteria = normalizeKriteria(currentKriteria);
-    double hargaSatuan = _getHargaBerdasarkanType(
-      currentKriteria,
-    ).round().toDouble();
 
+    // Ambil harga berdasarkan kriteria
+    dynamic rawHarga = harga[currentKriteria];
+    double hargaDouble = 0;
+
+    if (rawHarga is String) {
+      hargaDouble = double.tryParse(rawHarga) ?? 0;
+    } else if (rawHarga is int) {
+      hargaDouble = rawHarga.toDouble();
+    } else if (rawHarga is double) {
+      hargaDouble = rawHarga;
+    } else {
+      hargaDouble = 0;
+    }
+
+    int hargaSatuan = hargaDouble.round();
     if (hargaSatuan <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Harga tidak ditemukan untuk grade $currentKriteria (${_getHargaTypeLabel()})',
-          ),
+          content: Text('Harga tidak ditemukan untuk grade $currentKriteria'),
         ),
       );
       return;
     }
 
+    // Hitung volume
     var custom = customVolumes.firstWhere(
       (c) => c['diameter'] == d,
       orElse: () => {},
@@ -432,14 +560,15 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
           .toDouble();
     }
 
+    // Hitung total harga
     int jumlahHarga = (volume * hargaSatuan).round();
 
+    // Cek duplikasi
     int existingIndex = data.indexWhere(
       (item) =>
           item['diameter'] == d &&
           item['panjang'] == p &&
-          item['kriteria'] == currentKriteria &&
-          item['hargaType'] == selectedHargaType.toString(),
+          item['kriteria'] == currentKriteria,
     );
 
     List<Map<String, dynamic>> updatedData;
@@ -450,6 +579,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
       updatedData[existingIndex] = {
         ...item,
         'jumlah': newJumlah,
+        'harga': hargaSatuan, // Update harga sesuai dengan harga jual pembeli
         'jumlahHarga': (volume * hargaSatuan * newJumlah).round(),
       };
       updatedData = sortData(updatedData);
@@ -465,10 +595,9 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         'panjang': p,
         'jumlah': 1,
         'volume': volume,
-        'harga': hargaSatuan,
+        'harga': hargaSatuan, // Harga dari harga jual pembeli
         'jumlahHarga': jumlahHarga,
-        'hargaType': selectedHargaType.toString(),
-        'hargaTypeLabel': _getHargaTypeLabel(),
+        'from_pembelian': false, // Item baru, bukan dari pembelian
       };
       updatedData = sortData([...data, newItem]);
       setState(() {
@@ -477,6 +606,15 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
       });
     }
 
+    // Clear input fields
+    diameterController.clear();
+    panjangController.clear();
+    setState(() {
+      diameter = '';
+      panjang = '';
+    });
+
+    // Scroll ke bawah
     Future.delayed(Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -486,6 +624,88 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         );
       }
     });
+  }
+
+  // Fungsi untuk mengaplikasikan harga ke semua item yang sudah ada
+  void applyHargaToAllItems() {
+    _debugHarga(); // Tambahkan ini untuk debugging
+    if (selectedPembeliId == null || selectedPembeliNama == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pilih pembeli terlebih dahulu di "Input Data"'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (harga.isEmpty || data.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tidak ada data harga atau item transaksi'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Cek apakah ada harga yang valid
+    bool hasValidPrice = false;
+    for (var key in harga.keys) {
+      dynamic priceValue = harga[key];
+      if (priceValue is num && priceValue > 0) {
+        hasValidPrice = true;
+        break;
+      } else if (priceValue is String &&
+          double.tryParse(priceValue) != null &&
+          double.tryParse(priceValue)! > 0) {
+        hasValidPrice = true;
+        break;
+      }
+    }
+
+    if (!hasValidPrice) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Harga belum diatur untuk pembeli ini'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      data = data.map((item) {
+        String kriteria = item['kriteria'];
+        dynamic rawHargaItem = harga[kriteria] ?? 0;
+        double hargaDouble = 0;
+
+        if (rawHargaItem is String) {
+          hargaDouble = double.tryParse(rawHargaItem) ?? 0;
+        } else if (rawHargaItem is int) {
+          hargaDouble = rawHargaItem.toDouble();
+        } else if (rawHargaItem is double) {
+          hargaDouble = rawHargaItem;
+        }
+
+        int hargaSatuan = hargaDouble.round();
+        double volume = (item['volume'] as num?)?.toDouble() ?? 0.0;
+        int jumlah = (item['jumlah'] as int?) ?? 1;
+
+        return {
+          ...item,
+          'harga': hargaSatuan,
+          'jumlahHarga': (volume * hargaSatuan * jumlah).round(),
+        };
+      }).toList();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Harga berhasil diterapkan ke semua item'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   List<Map<String, dynamic>> sortData(List<Map<String, dynamic>> list) {
@@ -577,36 +797,27 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     });
   }
 
+  // Fungsi untuk memuat transaksi yang tersimpan
   Future<void> _loadSavedTransaction() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedData = prefs.getString('current_pembelian_transaction');
+      final savedData = prefs.getString('current_opernota_transaction');
 
       if (savedData != null && savedData.isNotEmpty) {
         final transactionData = json.decode(savedData) as Map<String, dynamic>;
 
         setState(() {
           noFaktur = transactionData['noFaktur'] ?? noFaktur;
-          penjual = transactionData['penjual'] ?? '';
+          pembeli = transactionData['pembeli'] ?? '';
           alamat = transactionData['alamat'] ?? '';
           kayu = transactionData['kayu'] ?? '';
-          selectedPenjualId = transactionData['selectedPenjualId'];
-          selectedPenjualNama = transactionData['selectedPenjualNama'];
-          selectedPenjualAlamat = transactionData['selectedPenjualAlamat'];
+          fakturPembelian = transactionData['fakturPembelian'] ?? '';
+          selectedPembeliId = transactionData['selectedPembeliId'];
+          selectedPembeliNama = transactionData['selectedPembeliNama'];
+          selectedPembeliAlamat = transactionData['selectedPembeliAlamat'];
           selectedKayuId = transactionData['selectedKayuId'];
           selectedKayuNama = transactionData['selectedKayuNama'];
-
-          final hargaTypeStr =
-              transactionData['selectedHargaType'] ?? 'HargaType.umum';
-          if (hargaTypeStr.contains('level1')) {
-            selectedHargaType = HargaType.level1;
-          } else if (hargaTypeStr.contains('level2')) {
-            selectedHargaType = HargaType.level2;
-          } else if (hargaTypeStr.contains('level3')) {
-            selectedHargaType = HargaType.level3;
-          } else {
-            selectedHargaType = HargaType.umum;
-          }
+          selectedFakturPembelian = transactionData['selectedFakturPembelian'];
 
           data =
               (transactionData['data'] as List<dynamic>?)
@@ -627,16 +838,6 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
               [];
 
           harga = Map<String, dynamic>.from(transactionData['harga'] ?? {});
-          hargaLevel1 = Map<String, dynamic>.from(
-            transactionData['hargaLevel1'] ?? {},
-          );
-          hargaLevel2 = Map<String, dynamic>.from(
-            transactionData['hargaLevel2'] ?? {},
-          );
-          hargaLevel3 = Map<String, dynamic>.from(
-            transactionData['hargaLevel3'] ?? {},
-          );
-
           modalVisible = transactionData['modalVisible'] ?? false;
           selectedCustomKriteria = transactionData['selectedCustomKriteria'];
           diameter = transactionData['diameter'] ?? '';
@@ -645,10 +846,12 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
           customVolumeValue = transactionData['customVolumeValue'] ?? '';
           operasionalTipe = transactionData['operasionalTipe'] ?? 'tambah';
 
+          // Set nilai controller
           diameterController.text = diameter;
           panjangController.text = panjang;
           customDiameterController.text = customDiameter;
           customVolumeController.text = customVolumeValue;
+          fakturPembelianController.text = fakturPembelian;
         });
       }
     } catch (e) {
@@ -656,11 +859,179 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     }
   }
 
+  // Fungsi untuk menghapus transaksi yang tersimpan
   Future<void> _clearSavedTransaction() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('current_pembelian_transaction');
+    await prefs.remove('current_opernota_transaction');
   }
 
+  // Fungsi untuk menyimpan transaksi yang sedang berlangsung
+  Future<void> _saveCurrentTransaction() async {
+    try {
+      Map<String, dynamic> transactionData = {
+        'noFaktur': noFaktur,
+        'pembeli': pembeli,
+        'alamat': alamat,
+        'kayu': kayu,
+        'fakturPembelian': fakturPembelian,
+        'selectedPembeliId': selectedPembeliId,
+        'selectedPembeliNama': selectedPembeliNama,
+        'selectedPembeliAlamat': selectedPembeliAlamat,
+        'selectedKayuId': selectedKayuId,
+        'selectedKayuNama': selectedKayuNama,
+        'selectedFakturPembelian': selectedFakturPembelian,
+        'data': data,
+        'operasionals': operasionals,
+        'customVolumes': customVolumes,
+        'harga': harga,
+        'modalVisible': modalVisible,
+        'selectedCustomKriteria': selectedCustomKriteria,
+        'diameter': diameter,
+        'panjang': panjang,
+        'customDiameter': customDiameter,
+        'customVolumeValue': customVolumeValue,
+        'operasionalTipe': operasionalTipe,
+      };
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'current_opernota_transaction',
+        json.encode(transactionData),
+      );
+    } catch (e) {
+      print('Error saving transaction: $e');
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (data.isNotEmpty) {
+        _saveCurrentTransaction();
+      }
+    });
+  }
+
+  // Fungsi untuk menyimpan ke database
+  Future<bool> _simpanKeDatabase() async {
+    try {
+      final db = await _dbService.database;
+
+      // Hitung total harga
+      double totalHarga = data.fold<double>(
+        0.0,
+        (sum, item) => sum + (item['jumlahHarga'] as num).toDouble(),
+      );
+
+      // Hitung total operasional
+      double totalOperasional = 0.0;
+      for (var op in operasionals) {
+        final biaya = (op['biaya'] as num).toDouble();
+        if (op['tipe'] == 'tambah') {
+          totalOperasional += biaya;
+        } else {
+          totalOperasional -= biaya;
+        }
+      }
+
+      double totalAkhir = totalHarga + totalOperasional;
+
+      // Mulai transaction
+      await db.transaction((txn) async {
+        // 1. Insert ke tabel penjualan
+        await txn.insert('penjualan', {
+          'faktur_penj': noFaktur,
+          'pembeli_id': int.tryParse(selectedPembeliId ?? '0'),
+          'product_id': int.tryParse(selectedKayuId ?? '0'),
+          'total': totalAkhir.round(),
+          'created_at': DateTime.now().toIso8601String(),
+        });
+
+        // 2. Insert detail penjualan
+        for (var item in data) {
+          await txn.insert('penjualan_detail', {
+            'faktur_penj': noFaktur,
+            'nama_kayu': kayu,
+            'kriteria': item['kriteria'],
+            'diameter': item['diameter'],
+            'panjang': item['panjang'],
+            'jumlah': item['jumlah'],
+            'volume': item['volume'],
+            'harga_jual': item['harga'],
+            'jumlah_harga_jual': item['jumlahHarga'],
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        }
+
+        // 3. Insert operasional jika ada
+        for (var op in operasionals) {
+          await txn.insert('penjualan_operasional', {
+            'faktur_penj': noFaktur,
+            'jenis': op['jenis'],
+            'biaya': op['biaya'],
+            'tipe': op['tipe'],
+          });
+        }
+
+        // 4. Update stok (mengurangi stok karena penjualan)
+        for (var item in data) {
+          final existingStok = await txn.query(
+            'stok',
+            where:
+                'nama_kayu = ? AND kriteria = ? AND diameter = ? AND panjang = ?',
+            whereArgs: [
+              kayu,
+              item['kriteria'],
+              item['diameter'],
+              item['panjang'],
+            ],
+          );
+
+          if (existingStok.isNotEmpty) {
+            final currentStok = existingStok.first['stok_buku'] as int;
+            final newStok = currentStok - item['jumlah'];
+            await txn.update(
+              'stok',
+              {
+                'stok_buku': newStok >= 0 ? newStok : 0,
+                'updated_at': DateTime.now().toIso8601String(),
+              },
+              where: 'id = ?',
+              whereArgs: [existingStok.first['id']],
+            );
+          } else {
+            // Jika stok tidak ada, buat record dengan nilai negatif (ini seharusnya tidak terjadi)
+            await txn.insert('stok', {
+              'nama_kayu': kayu,
+              'kriteria': item['kriteria'],
+              'diameter': item['diameter'],
+              'panjang': item['panjang'],
+              'stok_buku':
+                  -item['jumlah'], // Nilai negatif karena penjualan tanpa stok awal
+              'created_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          }
+        }
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Transaksi berhasil disimpan')));
+
+      return true;
+    } catch (error) {
+      print('Error menyimpan transaksi: $error');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan transaksi')));
+
+      return false;
+    }
+  }
+
+  // Fungsi utama untuk simpan transaksi
   Future<void> _handleSimpanTransaksi() async {
     try {
       if (data.isEmpty) {
@@ -670,9 +1041,9 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         return;
       }
 
-      if (selectedPenjualId == null) {
+      if (selectedPembeliId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Pilih penjual terlebih dahulu')),
+          SnackBar(content: Text('Pilih pembeli terlebih dahulu')),
         );
         return;
       }
@@ -684,18 +1055,20 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         return;
       }
 
+      // Simpan ke database dulu
       bool saveSuccess = await _simpanKeDatabase();
 
       if (!saveSuccess) {
         return;
       }
 
+      // Tanya apakah mau cetak
       bool? confirmPrint = await showDialog<bool>(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
             title: Text('Cetak Struk'),
-            content: Text('Apakah Anda ingin mencetak struk pembelian?'),
+            content: Text('Apakah Anda ingin mencetak struk penjualan?'),
             actions: [
               TextButton(
                 onPressed: () {
@@ -729,166 +1102,10 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (data.isNotEmpty) {
-        _saveCurrentTransaction();
-      }
-    });
-  }
-
-  Future<bool> _simpanKeDatabase() async {
-    try {
-      final db = await _dbService.database;
-
-      double totalHarga = data.fold<double>(
-        0.0,
-        (sum, item) => sum + (item['jumlahHarga'] as num).toDouble(),
-      );
-
-      double totalOperasional = 0.0;
-      for (var op in operasionals) {
-        final biaya = (op['biaya'] as num).toDouble();
-        if (op['tipe'] == 'tambah') {
-          totalOperasional += biaya;
-        } else {
-          totalOperasional -= biaya;
-        }
-      }
-
-      double totalAkhir = totalHarga + totalOperasional;
-
-      await db.transaction((txn) async {
-        await txn.insert('pembelian', {
-          'faktur_pemb': noFaktur,
-          'penjual_id': int.tryParse(selectedPenjualId ?? '0'),
-          'product_id': int.tryParse(selectedKayuId ?? '0'),
-          'total': totalAkhir.round(),
-          'created_at': DateTime.now().toIso8601String(),
-        });
-
-        for (var item in data) {
-          await txn.insert('pembelian_detail', {
-            'faktur_pemb': noFaktur,
-            'nama_kayu': kayu,
-            'kriteria': item['kriteria'],
-            'diameter': item['diameter'],
-            'panjang': item['panjang'],
-            'jumlah': item['jumlah'],
-            'volume': item['volume'],
-            'harga_beli': item['harga'],
-            'jumlah_harga_beli': item['jumlahHarga'],
-            'harga_type': item['hargaTypeLabel'],
-            'created_at': DateTime.now().toIso8601String(),
-          });
-        }
-
-        for (var op in operasionals) {
-          await txn.insert('pembelian_operasional', {
-            'faktur_pemb': noFaktur,
-            'jenis': op['jenis'],
-            'biaya': op['biaya'],
-            'tipe': op['tipe'],
-          });
-        }
-
-        for (var item in data) {
-          final existingStok = await txn.query(
-            'stok',
-            where:
-                'nama_kayu = ? AND kriteria = ? AND diameter = ? AND panjang = ?',
-            whereArgs: [
-              kayu,
-              item['kriteria'],
-              item['diameter'],
-              item['panjang'],
-            ],
-          );
-
-          if (existingStok.isNotEmpty) {
-            final currentStok = existingStok.first['stok_buku'] as int;
-            await txn.update(
-              'stok',
-              {
-                'stok_buku': currentStok + item['jumlah'],
-                'updated_at': DateTime.now().toIso8601String(),
-              },
-              where: 'id = ?',
-              whereArgs: [existingStok.first['id']],
-            );
-          } else {
-            await txn.insert('stok', {
-              'nama_kayu': kayu,
-              'kriteria': item['kriteria'],
-              'diameter': item['diameter'],
-              'panjang': item['panjang'],
-              'stok_buku': item['jumlah'],
-              'created_at': DateTime.now().toIso8601String(),
-              'updated_at': DateTime.now().toIso8601String(),
-            });
-          }
-        }
-      });
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Transaksi berhasil disimpan')));
-
-      return true;
-    } catch (error) {
-      print('Error menyimpan transaksi: $error');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan transaksi')));
-
-      return false;
-    }
-  }
-
-  Future<void> _saveCurrentTransaction() async {
-    try {
-      Map<String, dynamic> transactionData = {
-        'noFaktur': noFaktur,
-        'penjual': penjual,
-        'alamat': alamat,
-        'kayu': kayu,
-        'selectedPenjualId': selectedPenjualId,
-        'selectedPenjualNama': selectedPenjualNama,
-        'selectedPenjualAlamat': selectedPenjualAlamat,
-        'selectedKayuId': selectedKayuId,
-        'selectedKayuNama': selectedKayuNama,
-        'selectedHargaType': selectedHargaType.toString(),
-        'data': data,
-        'operasionals': operasionals,
-        'customVolumes': customVolumes,
-        'harga': harga,
-        'hargaLevel1': hargaLevel1,
-        'hargaLevel2': hargaLevel2,
-        'hargaLevel3': hargaLevel3,
-        'modalVisible': modalVisible,
-        'selectedCustomKriteria': selectedCustomKriteria,
-        'diameter': diameter,
-        'panjang': panjang,
-        'customDiameter': customDiameter,
-        'customVolumeValue': customVolumeValue,
-        'operasionalTipe': operasionalTipe,
-      };
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        'current_pembelian_transaction',
-        json.encode(transactionData),
-      );
-    } catch (e) {
-      print('Error saving transaction: $e');
-    }
-  }
-
-  // Tambahkan fungsi _cetakStrukLangsung yang hilang
+  // Fungsi untuk mencetak struk (sama seperti transaksi penjualan biasa)
   Future<void> _cetakStrukLangsung() async {
     try {
+      // Ambil pengaturan dari Preferences
       final printerName = _prefs.getPrinterNameSync();
       final printerAddress = _prefs.getPrinterAddressSync();
       final footerText = await _prefs.getFooterText() ?? 'TERIMA KASIH';
@@ -898,6 +1115,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
       final autoPrint = await _prefs.getAutoPrint() ?? false;
       final duplicatePrint = await _prefs.getDuplicatePrint() ?? false;
 
+      // Cek permission Bluetooth
       bool hasPermission = await _checkBluetoothPermissions();
       if (!hasPermission) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -909,8 +1127,10 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         return;
       }
 
+      // Buat instance printer
       final printer = BlueThermalPrinter.instance;
 
+      // Cari printer yang sesuai
       List<BluetoothDevice> devices = await printer.getBondedDevices();
       BluetoothDevice? targetDevice;
 
@@ -933,6 +1153,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         return;
       }
 
+      // Tampilkan indikator loading
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -949,16 +1170,20 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
       );
 
       try {
+        // Cek status koneksi
         bool? isConnected = await printer.isConnected;
 
+        // Jika sudah terhubung ke device lain, putuskan dulu
         if (isConnected == true) {
           await printer.disconnect();
           await Future.delayed(Duration(milliseconds: 500));
         }
 
+        // Coba koneksi ke printer
         await printer.connect(targetDevice);
         await Future.delayed(Duration(milliseconds: 1500));
 
+        // Verifikasi koneksi
         isConnected = await printer.isConnected;
 
         if (isConnected != true) {
@@ -970,6 +1195,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
         Navigator.pop(context);
 
+        // Tampilkan pesan sedang mencetak
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Sedang mencetak struk...'),
@@ -977,6 +1203,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
           ),
         );
 
+        // Reset printer
         await printer.printNewLine();
 
         // HEADER PERUSAHAAN
@@ -1001,6 +1228,14 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
             'No Faktur'.padRight(lineWidth - noFaktur.length) + noFaktur;
         await printer.printCustom(noFakturLine, 1, 0);
 
+        // Tampilkan faktur pembelian jika ada
+        if (fakturPembelian.isNotEmpty) {
+          String fakturPembelianLine =
+              'Ref Pembelian'.padRight(lineWidth - fakturPembelian.length) +
+              fakturPembelian;
+          await printer.printCustom(fakturPembelianLine, 1, 0);
+        }
+
         String tanggalLine =
             'Tanggal'.padRight(
               lineWidth -
@@ -1009,94 +1244,32 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
             DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
         await printer.printCustom(tanggalLine, 1, 0);
 
-        String penjualLine =
-            'Penjual'.padRight(lineWidth - penjual.length) + penjual;
-        await printer.printCustom(penjualLine, 1, 0);
+        String pembeliLine =
+            'Pembeli'.padRight(lineWidth - pembeli.length) + pembeli;
+        await printer.printCustom(pembeliLine, 1, 0);
 
         String kayuLine = 'Kayu'.padRight(lineWidth - kayu.length) + kayu;
         await printer.printCustom(kayuLine, 1, 0);
 
-        String jenisHargaLine =
-            'Jenis Harga'.padRight(lineWidth - _getHargaTypeLabel().length) +
-            _getHargaTypeLabel();
-        await printer.printCustom(jenisHargaLine, 1, 0);
-
         await printer.printCustom('------------------------', 1, 1);
 
-        // DETAIL ITEM - FIXED: Type conversion
+        // DETAIL ITEM
         for (var item in data) {
           String kriteria = getShortLabel(item['kriteria']);
+          int diameter = item['diameter'].toInt();
+          int panjang = item['panjang'].toInt();
+          int jumlah = item['jumlah'];
+          int volume = item['volume'].toInt();
+          int totalVolume = (volume * jumlah).toInt();
+          int harga = item['harga'];
+          int jumlahHarga = item['jumlahHarga'];
 
-          // Convert diameter to int safely
-          int diameter = 0;
-          if (item['diameter'] is double) {
-            diameter = (item['diameter'] as double).round();
-          } else if (item['diameter'] is int) {
-            diameter = item['diameter'] as int;
-          } else {
-            diameter = int.tryParse(item['diameter'].toString()) ?? 0;
-          }
-
-          // Convert panjang to int safely
-          int panjang = 0;
-          if (item['panjang'] is double) {
-            panjang = (item['panjang'] as double).round();
-          } else if (item['panjang'] is int) {
-            panjang = item['panjang'] as int;
-          } else {
-            panjang = int.tryParse(item['panjang'].toString()) ?? 0;
-          }
-
-          // Convert jumlah to int safely
-          int jumlah = 0;
-          if (item['jumlah'] is double) {
-            jumlah = (item['jumlah'] as double).round();
-          } else if (item['jumlah'] is int) {
-            jumlah = item['jumlah'] as int;
-          } else {
-            jumlah = int.tryParse(item['jumlah'].toString()) ?? 0;
-          }
-
-          // Convert volume to int safely
-          double volumeDouble = 0.0;
-          if (item['volume'] is double) {
-            volumeDouble = item['volume'] as double;
-          } else if (item['volume'] is int) {
-            volumeDouble = (item['volume'] as int).toDouble();
-          } else {
-            volumeDouble = double.tryParse(item['volume'].toString()) ?? 0.0;
-          }
-          int volume = volumeDouble.round();
-
-          int totalVolume = (volume * jumlah);
-
-          // Convert harga to int safely
-          double hargaDouble = 0.0;
-          if (item['harga'] is double) {
-            hargaDouble = item['harga'] as double;
-          } else if (item['harga'] is int) {
-            hargaDouble = (item['harga'] as int).toDouble();
-          } else {
-            hargaDouble = double.tryParse(item['harga'].toString()) ?? 0.0;
-          }
-          int harga = hargaDouble.round();
-
-          // Convert jumlahHarga to int safely
-          double jumlahHargaDouble = 0.0;
-          if (item['jumlahHarga'] is double) {
-            jumlahHargaDouble = item['jumlahHarga'] as double;
-          } else if (item['jumlahHarga'] is int) {
-            jumlahHargaDouble = (item['jumlahHarga'] as int).toDouble();
-          } else {
-            jumlahHargaDouble =
-                double.tryParse(item['jumlahHarga'].toString()) ?? 0.0;
-          }
-          int jumlahHarga = jumlahHargaDouble.round();
-
+          // BARIS 1
           String kiriHeader = '$kriteria D$diameter P$panjang';
           String kananHeader = '$jumlah x $volume cm3';
           await printer.printLeftRight(kiriHeader, kananHeader, 1);
 
+          // BARIS 2
           String detail =
               '$totalVolume cm3 x ${formatter.format(harga)} = ${formatter.format(jumlahHarga)}';
           await printer.printCustom(detail, 1, 2);
@@ -1105,49 +1278,24 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
         await printer.printCustom('------------------------', 1, 1);
 
-        // TOTAL VOLUME & HARGA - FIXED: Type conversion
-        double totalVol = data.fold(0.0, (sum, item) {
-          double volume = 0.0;
-          if (item['volume'] is double) {
-            volume = item['volume'] as double;
-          } else if (item['volume'] is int) {
-            volume = (item['volume'] as int).toDouble();
-          } else {
-            volume = double.tryParse(item['volume'].toString()) ?? 0.0;
-          }
-
-          double jumlah = 0.0;
-          if (item['jumlah'] is double) {
-            jumlah = item['jumlah'] as double;
-          } else if (item['jumlah'] is int) {
-            jumlah = (item['jumlah'] as int).toDouble();
-          } else {
-            jumlah = double.tryParse(item['jumlah'].toString()) ?? 0.0;
-          }
-
-          return sum + (volume * jumlah);
-        });
+        // TOTAL VOLUME & HARGA
+        double totalVol = data.fold(
+          0,
+          (sum, item) => sum + (item['volume'] * item['jumlah']),
+        );
         await printer.printLeftRight(
           'Total Volume',
-          '${totalVol.round()} cm3',
+          '${totalVol.toStringAsFixed(0)} cm3',
           1,
         );
 
-        double totalHrg = data.fold(0.0, (sum, item) {
-          double jumlahHarga = 0.0;
-          if (item['jumlahHarga'] is double) {
-            jumlahHarga = item['jumlahHarga'] as double;
-          } else if (item['jumlahHarga'] is int) {
-            jumlahHarga = (item['jumlahHarga'] as int).toDouble();
-          } else {
-            jumlahHarga =
-                double.tryParse(item['jumlahHarga'].toString()) ?? 0.0;
-          }
-          return sum + jumlahHarga;
-        });
+        double totalHrg = data.fold(
+          0,
+          (sum, item) => sum + item['jumlahHarga'],
+        );
         await printer.printLeftRight(
           'Total Harga',
-          formatter.format(totalHrg.round()),
+          formatter.format(totalHrg),
           1,
         );
 
@@ -1158,18 +1306,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
           for (var op in operasionals) {
             String jenis = op['jenis'].toString();
-
-            // Convert biaya to int safely
-            double biayaDouble = 0.0;
-            if (op['biaya'] is double) {
-              biayaDouble = op['biaya'] as double;
-            } else if (op['biaya'] is int) {
-              biayaDouble = (op['biaya'] as int).toDouble();
-            } else {
-              biayaDouble = double.tryParse(op['biaya'].toString()) ?? 0.0;
-            }
-            int biaya = biayaDouble.round();
-
+            int biaya = int.tryParse(op['biaya'].toString()) ?? 0;
             String tipe = op['tipe'].toString();
             String symbol = tipe == 'tambah' ? '+' : '-';
 
@@ -1180,17 +1317,11 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
             );
           }
 
+          // Hitung total operasional
           double totalOperasional = 0.0;
           for (var op in operasionals) {
-            double biaya = 0.0;
-            if (op['biaya'] is double) {
-              biaya = op['biaya'] as double;
-            } else if (op['biaya'] is int) {
-              biaya = (op['biaya'] as int).toDouble();
-            } else {
-              biaya = double.tryParse(op['biaya'].toString()) ?? 0.0;
-            }
-
+            final biaya = (int.tryParse(op['biaya'].toString()) ?? 0)
+                .toDouble();
             if (op['tipe'] == 'tambah') {
               totalOperasional += biaya;
             } else {
@@ -1198,25 +1329,19 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
             }
           }
 
-          String totalOpStr = formatter.format(totalOperasional.round());
+          String totalOpStr = formatter.format(totalOperasional);
           totalOpStr = totalOpStr.trim();
           await printer.printLeftRight('Jml Operasional', totalOpStr, 1);
         }
 
         await printer.printCustom('========================', 1, 1);
 
-        // TOTAL AKHIR - FIXED: Type conversion
+        // TOTAL AKHIR
         double totalAkhir = totalHrg;
-        for (var op in operasionals) {
-          double biaya = 0.0;
-          if (op['biaya'] is double) {
-            biaya = op['biaya'] as double;
-          } else if (op['biaya'] is int) {
-            biaya = (op['biaya'] as int).toDouble();
-          } else {
-            biaya = double.tryParse(op['biaya'].toString()) ?? 0.0;
-          }
 
+        // Hitung ulang dengan operasional
+        for (var op in operasionals) {
+          final biaya = (op['biaya'] as num).toDouble();
           if (op['tipe'] == 'tambah') {
             totalAkhir += biaya;
           } else {
@@ -1224,9 +1349,11 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
           }
         }
 
-        String nilaiFormatted = formatter.format(totalAkhir.round());
-        String barisTotal =
-            'TOTAL AKHIR'.padRight(20) + nilaiFormatted.padLeft(12);
+        String label = 'TOTAL AKHIR';
+        String nilai = formatter.format(totalAkhir);
+
+        String nilaiFormatted = formatter.format(totalAkhir);
+        String barisTotal = label.padRight(20) + nilaiFormatted.padLeft(12);
         await printer.printCustom(barisTotal, 1, 2);
         await printer.printNewLine();
 
@@ -1237,16 +1364,20 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         await printer.printNewLine();
         await printer.printNewLine();
 
+        // Potong kertas
         await printer.paperCut();
 
+        // Tunggu sebelum mencetak duplikat (jika perlu)
         if (duplicatePrint) {
           await Future.delayed(Duration(seconds: 2));
           await _cetakStrukLangsung();
         }
 
+        // Putuskan koneksi setelah selesai
         await Future.delayed(Duration(milliseconds: 500));
         await printer.disconnect();
 
+        // Feedback sukses
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Struk berhasil dicetak'),
@@ -1255,6 +1386,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
           ),
         );
 
+        // Reset form setelah cetak
         resetForm();
       } catch (e) {
         if (Navigator.canPop(context)) {
@@ -1358,65 +1490,44 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     );
   }
 
-  Widget _buildHargaTypeSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Jenis Harga:', style: TextStyle(fontWeight: FontWeight.bold)),
-        SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _buildHargaTypeChip('Um', HargaType.umum),
-            _buildHargaTypeChip('Lv 1', HargaType.level1),
-            _buildHargaTypeChip('Lv 2', HargaType.level2),
-            _buildHargaTypeChip('Lv 3', HargaType.level3),
-          ],
-        ),
-        SizedBox(height: 12),
-        if (selectedKayuId != null)
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              'Harga saat ini: ${_getHargaTypeLabel()}',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue[700],
-              ),
-            ),
-          ),
-      ],
-    );
+  // Fungsi untuk debugging harga
+  void _debugHarga() {
+    print('=== DEBUG HARGA ===');
+    print('selectedPembeliId: $selectedPembeliId');
+    print('selectedPembeliNama: $selectedPembeliNama');
+    print('selectedKayuId: $selectedKayuId');
+    print('selectedKayuNama: $selectedKayuNama');
+    print('Harga Map:');
+    harga.forEach((key, value) {
+      print('  $key: $value (type: ${value.runtimeType})');
+    });
+    print('Data items count: ${data.length}');
+    if (data.isNotEmpty) {
+      print('Item pertama kriteria: ${data.first['kriteria']}');
+      print('Item pertama harga: ${data.first['harga']}');
+    }
+    print('==================');
   }
 
-  Widget _buildHargaTypeChip(String label, HargaType type) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selectedHargaType == type,
-      onSelected: (selected) {
-        setState(() {
-          selectedHargaType = type;
-        });
-      },
-      selectedColor: Colors.blue,
-      backgroundColor: Colors.grey[200],
-      labelStyle: TextStyle(
-        color: selectedHargaType == type ? Colors.white : Colors.black,
-      ),
-    );
+  // Helper function untuk mencari item berdasarkan ID
+  Map<String, dynamic> _findItemById(List<dynamic> list, String? id) {
+    if (id == null) return {};
+
+    for (var item in list) {
+      if (item is Map<String, dynamic> && item['id']?.toString() == id) {
+        return Map<String, dynamic>.from(item);
+      }
+    }
+    return {};
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Transaksi Pembelian'),
+        title: Text('Transaksi Oper Nota'),
         actions: [
           IconButton(
             icon: Icon(Icons.settings),
@@ -1440,6 +1551,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         padding: EdgeInsets.all(10),
         child: Column(
           children: [
+            // Header dengan tombol Input Data
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1455,17 +1567,10 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text('No Faktur: $noFaktur'),
-                    Text('Penjual: ${penjual.isNotEmpty ? penjual : "-"}'),
+                    Text('Pembeli: ${pembeli.isNotEmpty ? pembeli : "-"}'),
                     Text('Kayu: ${kayu.isNotEmpty ? kayu : "-"}'),
-                    SizedBox(height: 4),
-                    Text(
-                      'Jenis Harga: ${_getHargaTypeLabel()}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue[700],
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    if (fakturPembelian.isNotEmpty)
+                      Text('Ref: $fakturPembelian'),
                   ],
                 ),
               ],
@@ -1473,141 +1578,78 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
             SizedBox(height: 10),
 
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 12.0),
-                  child: Text(
-                    'Custom :',
+            // Tombol untuk memuat data dari pembelian
+            if (daftarFakturPembelian.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ambil Data dari Pembelian:',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children:
-                        [
-                          {'short': 'St', 'full': 'Standar'},
-                          {'short': 'Sp A', 'full': 'Super A'},
-                          {'short': 'Sp B', 'full': 'Super B'},
-                          {'short': 'Sp C', 'full': 'Super C'},
-                        ].map((item) {
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                selectedCustomKriteria =
-                                    selectedCustomKriteria == item['full']
-                                    ? null
-                                    : item['full'];
-                              });
-                            },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: selectedCustomKriteria == item['full']
-                                    ? Colors.lightBlue
-                                    : Colors.grey[200],
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              child: Text(
-                                item['short'].toString(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: selectedCustomKriteria == item['full']
-                                      ? Colors.white
-                                      : Colors.black,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
+                  SizedBox(height: 5),
+                ],
+              ),
+
+            // Input manual faktur pembelian
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Panjang:'),
-                      TextField(
-                        controller: panjangController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          hintText: 'Panjang',
-                        ),
-                        onChanged: (value) => setState(() => panjang = value),
-                        onTap: () {
-                          panjangController.selection = TextSelection(
-                            baseOffset: 0,
-                            extentOffset: panjangController.text.length,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Diameter:'),
-                      TextField(
-                        controller: diameterController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          hintText: 'Diameter',
-                        ),
-                        onChanged: (value) => setState(() => diameter = value),
-                        onTap: () {
-                          diameterController.selection = TextSelection(
-                            baseOffset: 0,
-                            extentOffset: diameterController.text.length,
-                          );
-                        },
-                      ),
-                    ],
+                  child: TextField(
+                    controller: fakturPembelianController,
+                    decoration: InputDecoration(
+                      labelText: 'No Faktur Pembelian',
+                      border: OutlineInputBorder(),
+                      hintText: 'Masukkan nomor faktur pembelian',
+                    ),
+                    onChanged: (value) =>
+                        setState(() => fakturPembelian = value),
                   ),
                 ),
                 SizedBox(width: 10),
                 ElevatedButton(
-                  onPressed: handleAddOrUpdate,
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                  ),
-                  child: Text('OK'),
+                  onPressed: () {
+                    if (fakturPembelianController.text.isNotEmpty) {
+                      _loadDetailPembelian(fakturPembelianController.text);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Masukkan faktur pembelian terlebih dahulu',
+                          ),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    }
+                  },
+                  child: Text('Load Data'),
                 ),
               ],
             ),
+
             SizedBox(height: 10),
 
+            // Tombol untuk mengaplikasikan harga ke semua item
+            if (data.isNotEmpty && selectedPembeliId != null)
+              ElevatedButton(
+                onPressed: applyHargaToAllItems,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text('Terapkan Harga ke Semua Item'),
+              ),
+
+            SizedBox(height: 10),
+
+            // Tabel Data Transaksi
             Text(
-              'Data Transaksi Pembelian:',
+              'Data Transaksi Oper Nota:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
 
+            // Header Tabel
             Table(
               border: TableBorder.all(),
               columnWidths: {
@@ -1684,6 +1726,17 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                         child: Padding(
                           padding: EdgeInsets.all(4),
                           child: Text(
+                            'Jml Vol',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ),
+                    TableCell(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Text(
                             'Hrg',
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
@@ -1701,22 +1754,12 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                         ),
                       ),
                     ),
-                    TableCell(
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(4),
-                          child: Text(
-                            'Aksi',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ],
             ),
 
+            // Isi Tabel dengan Scroll
             SizedBox(
               height: 250,
               child: Scrollbar(
@@ -1725,6 +1768,8 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                   itemCount: data.length,
                   itemBuilder: (context, index) {
                     var item = data[index];
+                    int jumlahVolume = (item['volume'] * item['jumlah'])
+                        .round(); // Hitung Jml Vol
                     return Container(
                       color: item['id'] == latestItemId
                           ? Color(0xFFd0f0c0)
@@ -1748,19 +1793,8 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                                 child: Center(
                                   child: Padding(
                                     padding: EdgeInsets.all(4),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(getShortLabel(item['kriteria'])),
-                                        // SizedBox(height: 2),
-                                        // Text(
-                                        //   '(${item['hargaTypeLabel'] ?? 'Umum'})',
-                                        //   style: TextStyle(
-                                        //     fontSize: 10,
-                                        //     color: Colors.blue[700],
-                                        //   ),
-                                        // ),
-                                      ],
+                                    child: Text(
+                                      getShortLabel(item['kriteria']),
                                     ),
                                   ),
                                 ),
@@ -1809,6 +1843,17 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                                 child: Center(
                                   child: Padding(
                                     padding: EdgeInsets.all(4),
+                                    child: Text(
+                                      jumlahVolume
+                                          .toString(), // Menampilkan Jml Vol
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              TableCell(
+                                child: Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(4),
                                     child: Text(item['harga'].toString()),
                                   ),
                                 ),
@@ -1819,36 +1864,6 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                                     padding: EdgeInsets.all(4),
                                     child: Text(item['jumlahHarga'].toString()),
                                   ),
-                                ),
-                              ),
-                              TableCell(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    TextButton(
-                                      style: TextButton.styleFrom(
-                                        padding: EdgeInsets.zero,
-                                        minimumSize: Size(24, 24),
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      onPressed: () =>
-                                          handleDecrement(item['id']),
-                                      child: Icon(Icons.remove, size: 18),
-                                    ),
-                                    TextButton(
-                                      style: TextButton.styleFrom(
-                                        padding: EdgeInsets.zero,
-                                        minimumSize: Size(24, 24),
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      onPressed: () =>
-                                          updateJumlah(item['id'], 1),
-                                      child: Icon(Icons.add, size: 18),
-                                    ),
-                                  ],
                                 ),
                               ),
                             ],
@@ -1862,108 +1877,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
             ),
             SizedBox(height: 10),
 
-            Text(
-              'Custom Volume (Opsional):',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Diameter:'),
-                      TextField(
-                        controller: customDiameterController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          hintText: 'Diameter',
-                        ),
-                        onChanged: (value) =>
-                            setState(() => customDiameter = value),
-                        onTap: () {
-                          customDiameterController.selection = TextSelection(
-                            baseOffset: 0,
-                            extentOffset: customDiameterController.text.length,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Volume:'),
-                      TextField(
-                        controller: customVolumeController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          hintText: 'Volume',
-                        ),
-                        onChanged: (value) =>
-                            setState(() => customVolumeValue = value),
-                        onTap: () {
-                          customVolumeController.selection = TextSelection(
-                            baseOffset: 0,
-                            extentOffset: customVolumeController.text.length,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                double d = double.tryParse(customDiameter) ?? 0;
-                int v = int.tryParse(customVolumeValue) ?? 0;
-                if (d > 0 && v > 0) {
-                  setState(() {
-                    customVolumes.removeWhere((c) => c['diameter'] == d);
-                    customVolumes.add({'diameter': d, 'volume': v});
-                    customDiameter = '';
-                    customVolumeValue = '';
-                  });
-                }
-              },
-              child: Text('Tambah Custom Volume'),
-            ),
-            SizedBox(height: 10),
-            if (customVolumes.isNotEmpty) ...[
-              Text('Daftar Custom Volume:'),
-              ...customVolumes.map((c) {
-                return Row(
-                  children: [
-                    Text('Diameter ${c['diameter']}: Volume ${c['volume']}'),
-                    IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed: () {
-                        setState(() {
-                          customVolumes.removeWhere(
-                            (item) => item['diameter'] == c['diameter'],
-                          );
-                        });
-                      },
-                    ),
-                  ],
-                );
-              }),
-            ],
-
+            // Tombol Aksi
             SizedBox(height: 20),
             Row(
               children: [
@@ -2013,6 +1927,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         ),
       ),
 
+      // Modal Input Data Penjualan
       floatingActionButton: modalVisible
           ? Container(
               margin: EdgeInsets.all(20),
@@ -2033,7 +1948,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Input Data Pembelian',
+                      'Input Data Penjualan',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -2043,47 +1958,67 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                     Text('No Faktur: $noFaktur'),
                     SizedBox(height: 10),
 
-                    // Pilihan Jenis Harga hanya ada di modal
-                    _buildHargaTypeSelector(),
-                    SizedBox(height: 10),
-
+                    // Dropdown untuk memilih Pembeli
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
-                        labelText: 'Pilih Penjual',
+                        labelText: 'Pilih Pembeli',
                         border: OutlineInputBorder(),
                       ),
-                      value: selectedPenjualId,
-                      items: daftarPenjual.map<DropdownMenuItem<String>>((
-                        penjual,
+                      value: selectedPembeliId,
+                      items: daftarPembeli.map<DropdownMenuItem<String>>((
+                        pembeli,
                       ) {
-                        final idStr = penjual['id']?.toString() ?? '';
+                        final idStr = pembeli['id']?.toString() ?? '';
                         return DropdownMenuItem<String>(
                           value: idStr,
-                          child: Text(penjual['nama']?.toString() ?? ''),
+                          child: Text(pembeli['nama']?.toString() ?? ''),
                         );
                       }).toList(),
+                      // Modifikasi onChanged di dropdown pembeli:
                       onChanged: (String? value) {
                         setState(() {
-                          selectedPenjualId = value;
-                          final selected = daftarPenjual.firstWhere(
+                          selectedPembeliId = value;
+                          final selected = daftarPembeli.firstWhere(
                             (p) => p['id']?.toString() == value,
                             orElse: () => <String, dynamic>{},
                           );
                           if (selected.isNotEmpty) {
-                            selectedPenjualNama = selected['nama']?.toString();
-                            selectedPenjualAlamat = selected['alamat']
+                            selectedPembeliNama = selected['nama']?.toString();
+                            selectedPembeliAlamat = selected['alamat']
                                 ?.toString();
-                            penjual = selectedPenjualNama ?? '';
-                            alamat = selectedPenjualAlamat ?? '';
+                            pembeli = selectedPembeliNama ?? '';
+                            alamat = selectedPembeliAlamat ?? '';
+
+                            // Load harga jual berdasarkan pembeli yang dipilih
+                            _loadHargaJualByPembeli(value);
+                          } else {
+                            // Reset jika pembeli tidak ditemukan
+                            selectedPembeliNama = null;
+                            selectedPembeliAlamat = null;
+                            pembeli = '';
+                            alamat = '';
+                            daftarKayu = [];
+                            selectedKayuId = null;
+                            selectedKayuNama = null;
+                            kayu = '';
+                            harga = {
+                              'Rijek 1': 0.0,
+                              'Rijek 2': 0.0,
+                              'Standar': 0.0,
+                              'Super A': 0.0,
+                              'Super B': 0.0,
+                              'Super C': 0.0,
+                            };
                           }
                         });
                       },
                     ),
 
                     SizedBox(height: 10),
-                    Text('Alamat: ${selectedPenjualAlamat ?? ''}'),
+                    Text('Alamat: ${selectedPembeliAlamat ?? ''}'),
                     SizedBox(height: 10),
 
+                    // Dropdown untuk memilih Kayu
                     DropdownButtonFormField<String>(
                       isExpanded: true,
                       decoration: InputDecoration(
@@ -2103,6 +2038,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                           child: Text(kayu['nama_kayu']?.toString() ?? ''),
                         );
                       }).toList(),
+                      // Modifikasi onChanged di dropdown kayu tetap sama:
                       onChanged: (String? value) {
                         setState(() {
                           selectedKayuId = value;
@@ -2116,6 +2052,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                                 ?.toString();
                             kayu = selectedKayuNama ?? '';
 
+                            // Set harga dari data SQLite
                             harga = {
                               'Rijek 1': selected['harga_rijek_1'] ?? 0,
                               'Rijek 2': selected['harga_rijek_2'] ?? 0,
@@ -2124,76 +2061,23 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                               'Super B': selected['harga_super_b'] ?? 0,
                               'Super C': selected['harga_super_c'] ?? 0,
                             };
-
-                            hargaLevel1 = {
-                              'Rijek 1': selected['harga_rijek_1_level1'] ?? 0,
-                              'Rijek 2': selected['harga_rijek_2_level1'] ?? 0,
-                              'Standar': selected['harga_standar_level1'] ?? 0,
-                              'Super A': selected['harga_super_a_level1'] ?? 0,
-                              'Super B': selected['harga_super_b_level1'] ?? 0,
-                              'Super C': selected['harga_super_c_level1'] ?? 0,
-                            };
-
-                            hargaLevel2 = {
-                              'Rijek 1': selected['harga_rijek_1_level2'] ?? 0,
-                              'Rijek 2': selected['harga_rijek_2_level2'] ?? 0,
-                              'Standar': selected['harga_standar_level2'] ?? 0,
-                              'Super A': selected['harga_super_a_level2'] ?? 0,
-                              'Super B': selected['harga_super_b_level2'] ?? 0,
-                              'Super C': selected['harga_super_c_level2'] ?? 0,
-                            };
-
-                            hargaLevel3 = {
-                              'Rijek 1': selected['harga_rijek_1_level3'] ?? 0,
-                              'Rijek 2': selected['harga_rijek_2_level3'] ?? 0,
-                              'Standar': selected['harga_standar_level3'] ?? 0,
-                              'Super A': selected['harga_super_a_level3'] ?? 0,
-                              'Super B': selected['harga_super_b_level3'] ?? 0,
-                              'Super C': selected['harga_super_c_level3'] ?? 0,
+                          } else {
+                            selectedKayuNama = null;
+                            kayu = '';
+                            harga = {
+                              'Rijek 1': 0.0,
+                              'Rijek 2': 0.0,
+                              'Standar': 0.0,
+                              'Super A': 0.0,
+                              'Super B': 0.0,
+                              'Super C': 0.0,
                             };
                           }
                         });
                       },
                     ),
 
-                    if (selectedKayuId != null)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: 10),
-                          Text(
-                            'Harga ${_getHargaTypeLabel()}:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          ...[
-                            'Rijek 1',
-                            'Rijek 2',
-                            'Standar',
-                            'Super A',
-                            'Super B',
-                            'Super C',
-                          ].map((kriteria) {
-                            double hargaValue = _getHargaBerdasarkanType(
-                              kriteria,
-                            );
-                            if (hargaValue > 0) {
-                              return Padding(
-                                padding: EdgeInsets.symmetric(vertical: 2),
-                                child: Text(
-                                  '$kriteria: Rp ${hargaValue.toInt()}',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                              );
-                            }
-                            return SizedBox();
-                          }).toList(),
-                        ],
-                      ),
-
+                    // Operasional
                     SizedBox(height: 20),
                     Text(
                       'Biaya Operasional:',
@@ -2241,6 +2125,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                       );
                     }).toList(),
 
+                    // Form untuk menambah operasional baru
                     SizedBox(height: 10),
                     TextField(
                       controller: operasionalJenisController,
@@ -2338,19 +2223,52 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
-                              if (selectedPenjualId != null &&
+                              if (selectedPembeliId != null &&
                                   selectedKayuId != null) {
-                                setState(() {
-                                  modalVisible = false;
-                                });
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Pilih penjual dan jenis kayu terlebih dahulu',
-                                    ),
-                                  ),
+                                // Gunakan fungsi helper
+                                final selectedPembeli = _findItemById(
+                                  daftarPembeli,
+                                  selectedPembeliId,
                                 );
+                                final selectedKayu = _findItemById(
+                                  daftarKayu,
+                                  selectedKayuId,
+                                );
+
+                                if (selectedPembeli.isNotEmpty &&
+                                    selectedKayu.isNotEmpty) {
+                                  setState(() {
+                                    pembeli =
+                                        selectedPembeli['nama']?.toString() ??
+                                        '';
+                                    alamat =
+                                        selectedPembeli['alamat']?.toString() ??
+                                        '';
+                                    kayu =
+                                        selectedKayu['nama_kayu']?.toString() ??
+                                        '';
+
+                                    harga = {
+                                      'Rijek 1':
+                                          selectedKayu['harga_rijek_1'] ?? 0,
+                                      'Rijek 2':
+                                          selectedKayu['harga_rijek_2'] ?? 0,
+                                      'Standar':
+                                          selectedKayu['harga_standar'] ?? 0,
+                                      'Super A':
+                                          selectedKayu['harga_super_a'] ?? 0,
+                                      'Super B':
+                                          selectedKayu['harga_super_b'] ?? 0,
+                                      'Super C':
+                                          selectedKayu['harga_super_c'] ?? 0,
+                                    };
+
+                                    modalVisible = false;
+                                  });
+
+                                  print('✅ Modal disimpan - Kayu: "$kayu"');
+                                  _saveCurrentTransaction();
+                                }
                               }
                             },
                             child: Text('Simpan'),

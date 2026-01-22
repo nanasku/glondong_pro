@@ -6,6 +6,7 @@ import 'package:tpk_app/pages/master_beli.dart';
 import 'package:tpk_app/pages/master_jual.dart';
 import 'package:tpk_app/pages/pembeli.dart';
 import 'package:tpk_app/pages/penjual.dart';
+import 'package:tpk_app/pages/transaksi_opernota.dart';
 import 'package:tpk_app/pages/transaksi_pembelian.dart';
 import 'package:tpk_app/pages/transaksi_penjualan.dart';
 import 'package:tpk_app/pages/laporan_pembelian.dart';
@@ -69,6 +70,9 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         );
+        return;
+      case 15:
+        _navigateToPage(const TransaksiOperNotaPage());
         return;
       case 12:
         _navigateToPage(const BackupDataPage());
@@ -135,6 +139,9 @@ class _HomePageState extends State<HomePage> {
         return const OperasionalTPKPage();
       case 14:
         return const PengaturanPage();
+      case 15:
+        return const TransaksiOperNotaPage();
+
       default:
         return DashboardPage(
           onMenuSelected: _onItemSelected,
@@ -205,6 +212,9 @@ class _HomePageState extends State<HomePage> {
         return 'Biaya Operasional TPK';
       case 14:
         return 'Pengaturan';
+      case 15:
+        return 'Transaksi Oper Nota';
+
       default:
         return 'Glondong';
     }

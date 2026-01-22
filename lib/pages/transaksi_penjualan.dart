@@ -1351,6 +1351,42 @@ class _TransaksiPenjualanState extends State<TransaksiPenjualan>
     }
   }
 
+  // Fungsi untuk membatalkan transaksi yang sedang berjalan
+  void _handleBatalTransaksi() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Batalkan Transaksi'),
+          content: Text(
+            'Apakah Anda yakin ingin membatalkan transaksi ini? '
+            'Semua data yang belum disimpan akan dihapus.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Tidak'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                resetForm();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Transaksi telah dibatalkan'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              child: Text('Ya, Batalkan', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // ⭐⭐⭐ DEBUG: Cek state saat rebuild ⭐⭐⭐
@@ -1902,16 +1938,46 @@ class _TransaksiPenjualanState extends State<TransaksiPenjualan>
             // Tombol Aksi
             SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton(
-                  onPressed: () => _handleSimpanTransaksi(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    minimumSize: Size(200, 50),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _handleBatalTransaksi,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color.fromARGB(255, 233, 233, 233),
+                      foregroundColor: const Color.fromARGB(
+                        255,
+                        114,
+                        114,
+                        114,
+                      ), // warna teks & icon
+                      minimumSize: Size.fromHeight(50),
+                    ),
+                    child: Text(
+                      'BATAL / BARU',
+                      style: TextStyle(
+                        color: const Color.fromARGB(255, 95, 28, 28),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  child: Text('SIMPAN & CETAK', style: TextStyle(fontSize: 16)),
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _handleSimpanTransaksi,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      minimumSize: Size.fromHeight(50),
+                    ),
+                    child: Text(
+                      'SIMPAN & CETAK',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

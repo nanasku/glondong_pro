@@ -335,6 +335,12 @@ class SidebarState extends State<Sidebar> {
                     ),
                     _buildSectionHeader('TRANSAKSI'),
                     _buildMenuTile(
+                      index: 15,
+                      icon: Icons.sell,
+                      title: 'Transaksi Oper Nota',
+                      isSelected: widget.selectedIndex == 15,
+                    ),
+                    _buildMenuTile(
                       index: 1,
                       icon: Icons.sell,
                       title: 'Transaksi Penjualan',
@@ -350,7 +356,7 @@ class SidebarState extends State<Sidebar> {
                       index: 13,
                       icon: Icons.business_center,
                       title: 'Biaya Operasional TPK',
-                      isSelected: widget.selectedIndex == 2,
+                      isSelected: widget.selectedIndex == 13,
                     ),
                     _buildSectionHeader('DATA MASTER'),
                     _buildMenuTile(
