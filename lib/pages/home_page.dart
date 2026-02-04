@@ -9,6 +9,7 @@ import 'package:tpk_app/pages/penjual.dart';
 import 'package:tpk_app/pages/transaksi_opernota.dart';
 import 'package:tpk_app/pages/transaksi_pembelian.dart';
 import 'package:tpk_app/pages/transaksi_penjualan.dart';
+import 'package:tpk_app/pages/transaksi_inputdata.dart';
 import 'package:tpk_app/pages/laporan_pembelian.dart';
 import 'package:tpk_app/pages/laporan_penjualan.dart';
 import 'package:tpk_app/pages/laporan_labarugi.dart';
@@ -73,6 +74,9 @@ class _HomePageState extends State<HomePage> {
         return;
       case 15:
         _navigateToPage(const TransaksiOperNotaPage());
+        return;
+      case 16:
+        _navigateToPage(const TransaksiInputData());
         return;
       case 12:
         _navigateToPage(const BackupDataPage());
@@ -141,6 +145,8 @@ class _HomePageState extends State<HomePage> {
         return const PengaturanPage();
       case 15:
         return const TransaksiOperNotaPage();
+      case 16:
+        return const TransaksiInputData();
 
       default:
         return DashboardPage(
@@ -214,6 +220,8 @@ class _HomePageState extends State<HomePage> {
         return 'Pengaturan';
       case 15:
         return 'Transaksi Oper Nota';
+      case 16:
+        return 'Transaksi Input Data';
 
       default:
         return 'Glondong';

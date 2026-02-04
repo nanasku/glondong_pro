@@ -9,17 +9,20 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class TransaksiPembelian extends StatefulWidget {
-  const TransaksiPembelian({super.key});
+class TransaksiInputData extends StatefulWidget {
+  // Parameter untuk menerima data dari nota fisik
+  final Map<String, dynamic>? dataNota;
+
+  const TransaksiInputData({super.key, this.dataNota});
 
   @override
-  _TransaksiPembelianState createState() => _TransaksiPembelianState();
+  _TransaksiInputDataState createState() => _TransaksiInputDataState();
 }
 
 // ENUM untuk jenis harga - DIPINDAHKAN KE LUAR CLASS
 enum HargaType { umum, level1, level2, level3 }
 
-class _TransaksiPembelianState extends State<TransaksiPembelian>
+class _TransaksiInputDataState extends State<TransaksiInputData>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true; // Ini akan menjaga state saat pindah halaman
@@ -73,6 +76,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
   String kriteria = '';
   String diameter = '';
   String panjang = '';
+  String jumlahBatang = ''; // Field baru untuk jumlah batang, default 1
   List<Map<String, dynamic>> data = [];
   String? latestItemId;
 
@@ -102,6 +106,9 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
   // TextEditingController
   TextEditingController diameterController = TextEditingController();
   TextEditingController panjangController = TextEditingController();
+  TextEditingController jumlahBatangController = TextEditingController(
+    text: '',
+  ); // Controller baru
   TextEditingController customDiameterController = TextEditingController();
   TextEditingController customVolumeController = TextEditingController();
 
@@ -118,6 +125,32 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     _scrollController = ScrollController();
     _initializeDatabase();
     _loadSavedTransaction();
+
+    // Load data dari nota fisik jika ada
+    if (widget.dataNota != null) {
+      _loadDataFromNota(widget.dataNota!);
+    }
+  }
+
+  // Fungsi untuk memuat data dari nota fisik
+  void _loadDataFromNota(Map<String, dynamic> dataNota) {
+    setState(() {
+      // Set data dari nota fisik
+      selectedPenjualId = dataNota['penjual_id']?.toString();
+      selectedPenjualNama = dataNota['penjual_nama']?.toString();
+      selectedPenjualAlamat = dataNota['penjual_alamat']?.toString();
+      penjual = selectedPenjualNama ?? '';
+      alamat = selectedPenjualAlamat ?? '';
+
+      selectedKayuId = dataNota['kayu_id']?.toString();
+      selectedKayuNama = dataNota['kayu_nama']?.toString();
+      kayu = selectedKayuNama ?? '';
+
+      // Load harga dari database berdasarkan kayu
+      if (selectedKayuId != null) {
+        _loadHargaKayu(selectedKayuId!);
+      }
+    });
   }
 
   Future<void> _initializeDatabase() async {
@@ -134,6 +167,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
     diameterController.dispose();
     panjangController.dispose();
+    jumlahBatangController.dispose(); // Dispose controller baru
     customDiameterController.dispose();
     customVolumeController.dispose();
     _scrollController.dispose();
@@ -144,6 +178,8 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     setState(() {
       panjangController.clear();
       diameterController.clear();
+      jumlahBatangController.clear();
+      jumlahBatangController.clear(); // Reset ke default
       customDiameterController.clear();
       customVolumeController.clear();
       operasionalJenisController.clear();
@@ -162,6 +198,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
       kayu = '';
       diameter = '';
       panjang = '';
+      jumlahBatang = ''; // Reset ke default
       customDiameter = '';
       customVolumeValue = '';
       operasionalTipe = 'tambah';
@@ -224,6 +261,64 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
   Future<void> _loadDataDariDatabase() async {
     await _loadPenjual();
     await _loadKayu();
+  }
+
+  // Fungsi untuk memuat harga kayu berdasarkan ID
+  Future<void> _loadHargaKayu(String kayuId) async {
+    try {
+      // Load semua data kayu terlebih dahulu jika belum dimuat
+      if (daftarKayu.isEmpty) {
+        await _loadKayu();
+      }
+
+      // Cari kayu dari daftarKayu
+      final selectedKayuList = daftarKayu
+          .where((k) => k['id']?.toString() == kayuId)
+          .toList();
+
+      if (selectedKayuList.isNotEmpty) {
+        final item = selectedKayuList.first;
+        setState(() {
+          harga = {
+            'Rijek 1': (item['harga_rijek_1'] ?? 0).toDouble(),
+            'Rijek 2': (item['harga_rijek_2'] ?? 0).toDouble(),
+            'Standar': (item['harga_standar'] ?? 0).toDouble(),
+            'Super A': (item['harga_super_a'] ?? 0).toDouble(),
+            'Super B': (item['harga_super_b'] ?? 0).toDouble(),
+            'Super C': (item['harga_super_c'] ?? 0).toDouble(),
+          };
+
+          hargaLevel1 = {
+            'Rijek 1': (item['harga_rijek_1_level1'] ?? 0).toDouble(),
+            'Rijek 2': (item['harga_rijek_2_level1'] ?? 0).toDouble(),
+            'Standar': (item['harga_standar_level1'] ?? 0).toDouble(),
+            'Super A': (item['harga_super_a_level1'] ?? 0).toDouble(),
+            'Super B': (item['harga_super_b_level1'] ?? 0).toDouble(),
+            'Super C': (item['harga_super_c_level1'] ?? 0).toDouble(),
+          };
+
+          hargaLevel2 = {
+            'Rijek 1': (item['harga_rijek_1_level2'] ?? 0).toDouble(),
+            'Rijek 2': (item['harga_rijek_2_level2'] ?? 0).toDouble(),
+            'Standar': (item['harga_standar_level2'] ?? 0).toDouble(),
+            'Super A': (item['harga_super_a_level2'] ?? 0).toDouble(),
+            'Super B': (item['harga_super_b_level2'] ?? 0).toDouble(),
+            'Super C': (item['harga_super_c_level2'] ?? 0).toDouble(),
+          };
+
+          hargaLevel3 = {
+            'Rijek 1': (item['harga_rijek_1_level3'] ?? 0).toDouble(),
+            'Rijek 2': (item['harga_rijek_2_level3'] ?? 0).toDouble(),
+            'Standar': (item['harga_standar_level3'] ?? 0).toDouble(),
+            'Super A': (item['harga_super_a_level3'] ?? 0).toDouble(),
+            'Super B': (item['harga_super_b_level3'] ?? 0).toDouble(),
+            'Super C': (item['harga_super_c_level3'] ?? 0).toDouble(),
+          };
+        });
+      }
+    } catch (error) {
+      print('Error loading harga kayu: $error');
+    }
   }
 
   Future<void> _loadPenjual() async {
@@ -358,6 +453,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
     double d = double.tryParse(diameter) ?? 0;
     double p = double.tryParse(panjang) ?? 0;
+    int jml = int.tryParse(jumlahBatang) ?? 1; // Tetap default 1 jika kosong
     if (d == 0 || p == 0) return;
 
     String currentKriteria = selectedCustomKriteria ?? '';
@@ -432,7 +528,8 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
           .toDouble();
     }
 
-    int jumlahHarga = (volume * hargaSatuan).round();
+    int jumlahHarga = (volume * hargaSatuan * jml)
+        .round(); // Hitung dengan jumlah batang
 
     int existingIndex = data.indexWhere(
       (item) =>
@@ -446,7 +543,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
     if (existingIndex >= 0) {
       updatedData = List<Map<String, dynamic>>.from(data);
       var item = updatedData[existingIndex];
-      int newJumlah = item['jumlah'] + 1;
+      int newJumlah = item['jumlah'] + jml; // Tambah dengan jumlah batang
       updatedData[existingIndex] = {
         ...item,
         'jumlah': newJumlah,
@@ -463,7 +560,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         'kriteria': currentKriteria,
         'diameter': d,
         'panjang': p,
-        'jumlah': 1,
+        'jumlah': jml, // Gunakan jumlah batang
         'volume': volume,
         'harga': hargaSatuan,
         'jumlahHarga': jumlahHarga,
@@ -476,6 +573,16 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         data = updatedData;
       });
     }
+
+    // Reset field input setelah ditambahkan - HANYA Diameter dan Jumlah Batang
+    setState(() {
+      diameter = '';
+      jumlahBatang = ''; // Hanya di-clear, tanpa default
+      diameterController.clear();
+      jumlahBatangController.clear(); // Hanya clear, tanpa set ke '1'
+
+      // Panjang TIDAK direset, tetap ada nilainya
+    });
 
     Future.delayed(Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
@@ -580,7 +687,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
   Future<void> _loadSavedTransaction() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedData = prefs.getString('current_pembelian_transaction');
+      final savedData = prefs.getString('current_inputdata_transaction');
 
       if (savedData != null && savedData.isNotEmpty) {
         final transactionData = json.decode(savedData) as Map<String, dynamic>;
@@ -641,12 +748,15 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
           selectedCustomKriteria = transactionData['selectedCustomKriteria'];
           diameter = transactionData['diameter'] ?? '';
           panjang = transactionData['panjang'] ?? '';
+          jumlahBatang =
+              transactionData['jumlahBatang'] ?? ''; // Load jumlah batang
           customDiameter = transactionData['customDiameter'] ?? '';
           customVolumeValue = transactionData['customVolumeValue'] ?? '';
           operasionalTipe = transactionData['operasionalTipe'] ?? 'tambah';
 
           diameterController.text = diameter;
           panjangController.text = panjang;
+          jumlahBatangController.text = jumlahBatang; // Set controller
           customDiameterController.text = customDiameter;
           customVolumeController.text = customVolumeValue;
         });
@@ -658,7 +768,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
   Future<void> _clearSavedTransaction() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('current_pembelian_transaction');
+    await prefs.remove('current_inputdata_transaction');
   }
 
   Future<void> _handleSimpanTransaksi() async {
@@ -871,6 +981,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
         'selectedCustomKriteria': selectedCustomKriteria,
         'diameter': diameter,
         'panjang': panjang,
+        'jumlahBatang': jumlahBatang, // Simpan jumlah batang
         'customDiameter': customDiameter,
         'customVolumeValue': customVolumeValue,
         'operasionalTipe': operasionalTipe,
@@ -878,7 +989,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
-        'current_pembelian_transaction',
+        'current_inputdata_transaction',
         json.encode(transactionData),
       );
     } catch (e) {
@@ -1416,7 +1527,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Transaksi Pembelian'),
+        title: Text('Input Data dari Nota Fisik'),
         actions: [
           IconButton(
             icon: Icon(Icons.settings),
@@ -1536,7 +1647,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
-                  flex: 3,
+                  flex: 2,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1564,7 +1675,7 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                 ),
                 SizedBox(width: 10),
                 Expanded(
-                  flex: 3,
+                  flex: 2,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1584,6 +1695,39 @@ class _TransaksiPembelianState extends State<TransaksiPembelian>
                           diameterController.selection = TextSelection(
                             baseOffset: 0,
                             extentOffset: diameterController.text.length,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Jml Btg:'),
+                      TextField(
+                        controller: jumlahBatangController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: 'Jml',
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 12,
+                          ),
+                        ),
+                        onChanged: (value) =>
+                            setState(() => jumlahBatang = value),
+                        onTap: () {
+                          jumlahBatangController.selection = TextSelection(
+                            baseOffset: 0,
+                            extentOffset: jumlahBatangController.text.length,
                           );
                         },
                       ),

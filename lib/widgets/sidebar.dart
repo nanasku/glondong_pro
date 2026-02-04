@@ -337,7 +337,7 @@ class SidebarState extends State<Sidebar> {
                     _buildMenuTile(
                       index: 15,
                       icon: Icons.sell,
-                      title: 'Transaksi Oper Nota',
+                      title: 'Oper Nota Penjualan',
                       isSelected: widget.selectedIndex == 15,
                     ),
                     _buildMenuTile(
@@ -351,6 +351,12 @@ class SidebarState extends State<Sidebar> {
                       icon: Icons.shopping_cart,
                       title: 'Transaksi Pembelian',
                       isSelected: widget.selectedIndex == 2,
+                    ),
+                    _buildMenuTile(
+                      index: 16,
+                      icon: Icons.input,
+                      title: 'Input Data Pembelian',
+                      isSelected: widget.selectedIndex == 16,
                     ),
                     _buildMenuTile(
                       index: 13,
